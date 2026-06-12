@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.env.local
+.env.*.local
+venv/
+ENV/
+env/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+
+# Large Datasets / CSVs / Temporary outputs
+*.csv
+data/**/*.csv
+
+# Model Checkpoints & Output directories
+results/
+distilbert_survey_model/
+logs/
+.optuna/
+optuna_study.db
