@@ -72,9 +72,9 @@ Use the unified entrypoint `main.py` to run any step of the pipeline.
 ### 📥 1. Extract Paper Data
 Fetch publications for an author ID (e.g., `144019071`) from the Semantic Scholar API:
 ```bash
-python main.py extract --author 144019071 --output data/prof3.csv
+python main.py extract --author 144019071 --output data/nima.csv
 ```
-This will fetch all publications and save the metadata to `data/prof3.csv`.
+This will fetch all publications and save the metadata to `data/nima.csv`.
 
 ---
 
@@ -96,7 +96,7 @@ python main.py train --dataset data/dataset.csv --tune --trials 5
 ### ⚡ 3. Classify and Calculate Metrics
 Filter out survey papers and calculate academic indices (h-index & i10-index) before and after filtering:
 ```bash
-python main.py classify --input data/prof3.csv
+python main.py classify --input data/nima.csv
 ```
 This classifies each paper, writes original research papers to `data/Non-Survey-Papers.csv`, writes excluded surveys to `data/Survey-Papers.csv`, and prints a comprehensive comparison table showing the change in indices.
 

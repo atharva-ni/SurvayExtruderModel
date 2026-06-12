@@ -4,30 +4,24 @@ import csv
 import requests
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
 
-API_KEY = os.getenv("SEMANTIC_SCHOLAR_API_KEY", "")
-DEFAULT_AUTHOR_ID = os.getenv("SEMANTIC_SCHOLAR_AUTHOR_ID", "144019071")
+API_KEY = os.getenv("SEMANTIC_SCHOLAR_API_KEY", "bTfTpZDCqB6NtYTn3WUyc7TyGaGLBLuygGhwXkGd")
+AUTHOR_ID = os.getenv("SEMANTIC_SCHOLAR_AUTHOR_ID", "40356145")
 BASE_URL = "https://api.semanticscholar.org/graph/v1"
 
 
 def get_all_author_papers(author_id, api_key=None):
-    """
-    Fetch all papers for a given Semantic Scholar author ID.
-    """
     all_papers = []
     offset = 0
     limit = 1000
-    headers = {}
-    
-    # Use provided key or fall back to env key
-    key = api_key or API_KEY
+
+    # Fallback/override key logic
+    key = api_key if api_key is not None else API_KEY
     if key:
-        headers["x-api-key"] = key
-        print("🔑 Using Semantic Scholar API Key.")
-    else:
-        print("ℹ️ No API Key provided. Running in rate-limited public mode.")
+        key = key.strip()
+    headers = {"x-api-key": key} if key else {}
 
     while True:
         url = f"{BASE_URL}/author/{author_id}/papers"
@@ -37,40 +31,31 @@ def get_all_author_papers(author_id, api_key=None):
             "fields": "title,year,venue,abstract,authors,citationCount,references"
         }
 
-        try:
-            response = requests.get(url, headers=headers, params=params)
-            
-            # Avoid hitting rate limits (1 request per second for public APIs)
-            time.sleep(1)
+        response = requests.get(url, headers=headers, params=params)
+        time.sleep(1)  # avoid hitting rate limits
 
-            if response.status_code != 200:
-                print(f"❌ Error ({response.status_code}): {response.text}")
-                break
-
-            data = response.json().get("data", [])
-            if not data:
-                print("✅ No more papers found, stopping.")
-                break
-
-            all_papers.extend(data)
-            print(f"Fetched {len(data)} papers (Total so far: {len(all_papers)})")
-
-            if len(data) < limit:
-                break
-
-            offset += limit
-
-        except Exception as e:
-            print(f"❌ HTTP request exception: {e}")
+        if response.status_code != 200:
+            print("Error:", response.text)
             break
+
+        data = response.json().get("data", [])
+        if not data:
+            print("✅ No more papers found, stopping.")
+            break
+
+        all_papers.extend(data)
+        print(f"Fetched {len(data)} papers (Total so far: {len(all_papers)})")
+
+        # Stop if less than limit (means last page)
+        if len(data) < limit:
+            break
+
+        offset += limit  # move to next page
 
     return all_papers
 
 
 def extract_paper_info(papers):
-    """
-    Extract relevant paper information into a flat structure.
-    """
     results = []
 
     for p in papers:
@@ -98,15 +83,12 @@ def extract_paper_info(papers):
     return results
 
 
-def save_to_csv(data, filename):
-    """
-    Save list of paper dicts to a CSV file.
-    """
+def save_to_csv(data, filename="data/nima.csv"):
     if not data:
-        print("⚠️ No data to save.")
+        print("No data to save.")
         return
 
-    # Ensure parent directories exist
+    # Ensure output directory exists
     os.makedirs(os.path.dirname(os.path.abspath(filename)), exist_ok=True)
 
     with open(filename, "w", newline="", encoding="utf-8") as f:
@@ -114,23 +96,26 @@ def save_to_csv(data, filename):
         writer.writeheader()
         writer.writerows(data)
 
-    print(f"✅ CSV saved successfully to {filename}")
+    print(f"✅ CSV saved successfully as {filename}")
 
 
 def run_extraction(author_id=None, output_path=None, api_key=None):
-    target_author = author_id or DEFAULT_AUTHOR_ID
-    target_output = output_path or os.path.join("data", "prof3.csv")
+    target_author = author_id or AUTHOR_ID
+    target_output = output_path or "data/nima.csv"
     
-    print(f"📡 Fetching papers for Semantic Scholar Author ID: {target_author}")
     papers = get_all_author_papers(target_author, api_key=api_key)
-    
-    if papers:
-        print(f"📊 Total papers found: {len(papers)}")
-        final_data = extract_paper_info(papers)
-        save_to_csv(final_data, target_output)
-    else:
-        print("⚠️ No papers retrieved.")
+    print(f"Total papers found: {len(papers)}")
+
+    final_data = extract_paper_info(papers)
+    save_to_csv(final_data, target_output)
 
 
 if __name__ == "__main__":
-    run_extraction()
+    import argparse
+    parser = argparse.ArgumentParser(description="Extract publications from Semantic Scholar API")
+    parser.add_argument("--author", type=str, default=AUTHOR_ID, help="Semantic Scholar Author ID")
+    parser.add_argument("--output", type=str, default="data/nima.csv", help="Output CSV path")
+    parser.add_argument("--api-key", type=str, default=None, help="Semantic Scholar API Key")
+    args = parser.parse_args()
+
+    run_extraction(author_id=args.author, output_path=args.output, api_key=args.api_key)

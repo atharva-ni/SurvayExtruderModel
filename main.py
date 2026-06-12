@@ -79,7 +79,7 @@ Examples:
             if csv_files:
                 input_csv = csv_files[0]
             else:
-                input_csv = os.path.join("data", "prof3.csv")
+                input_csv = os.path.join("data", "nima.csv")
 
         output_csv = args.output or os.path.join("data", "Non-Survey-Papers.csv")
         survey_csv = args.surveys or os.path.join("data", "Survey-Papers.csv")
