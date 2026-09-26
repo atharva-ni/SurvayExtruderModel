@@ -30,3 +30,11 @@ optuna_study.db
 # API response cache
 data/cache/
 distilbert_survey_model*/
+
+# Datasets the published results depend on (tracked)
+!data/real_dataset.csv
+!data/real_dataset_split.csv
+!data/eval_to_label.csv
+!data/hard_cases_to_label.csv
+!data/proauthor/*.csv
+!data/proauthor_s2/*.csv

@@ -175,6 +175,22 @@ python main.py --help
 
 ---
 
+## 🗂️ Data in this repository
+
+| File | Contents |
+|---|---|
+| `data/real_dataset.csv` | Training data: 9,624 papers (4,812 surveys / 4,812 research) from OpenAlex, labeled by venue |
+| `data/real_dataset_split.csv` | Train / validation / test assignment of each paper (by `OpenAlexId`) used for the reported results |
+| `data/eval_to_label.csv` | 328 author-profile papers with survey/research labels (`LabeledBy` says who labeled them) |
+| `data/hard_cases_to_label.csv` | Survey-like papers from research journals, excluded from training (unlabeled) |
+| `data/proauthor/*.csv` | Original Semantic Scholar profiles of the five authors (source of the evaluation set) |
+| `data/proauthor_s2/*.csv` | Semantic Scholar profiles with merged author IDs (`data/author_ids.json`), used for Table IV |
+| `data/scholar_reference.json` | Google Scholar metrics and top-20 papers per author, with reference labels |
+
+Metadata comes from [OpenAlex](https://openalex.org) (CC0) and the [Semantic Scholar API](https://www.semanticscholar.org/product/api). Abstracts remain the property of their publishers; they are included for research reproducibility.
+
+---
+
 ## 🧪 Tests
 Unit tests cover text cleaning, the categorization rules and the metric calculations (no model needed):
 ```bash
