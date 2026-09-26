@@ -1,0 +1,8 @@
+{
+  "_note": "Semantic Scholar splits these authors across several IDs. IDs below were found via the authors' Google Scholar top-20 papers and name search, and verified on 2026-09-24 by title overlap with the author's OpenAlex profile (and, for Hanzo, by inspecting paper topics). Rejected namesakes: Yu 40471592, 152347102, 144560491; Hossain 50066236; Han 2267902891 (uncertain).",
+  "hanzo":   {"name": "Lajos Hanzo",    "semantic_scholar": ["1730180", "80707783", "2258714332", "2285535626", "2196682732", "2271697757"], "openalex": "A5091122305"},
+  "niyato":  {"name": "Dusit Niyato",   "semantic_scholar": ["1713586", "2266084696", "2340230621", "2362086753"], "openalex": "A5091266202"},
+  "yu":      {"name": "F. Richard Yu",  "semantic_scholar": ["2484354012", "1696615", "2182528245"], "openalex": "A5100420016"},
+  "han":     {"name": "Zhu Han",        "semantic_scholar": ["145169163", "2114874032", "2113961205", "2271289751"], "openalex": "A5063667378"},
+  "hossain": {"name": "Ekram Hossain",  "semantic_scholar": ["144158811", "2244484586", "2257042534"], "openalex": "A5089270885"}
+}

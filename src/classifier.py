@@ -1,169 +1,146 @@
 """
-Final Survey/Non-Research Paper Classifier
-============================================
-Excludes surveys, guest editorials, and other non-research papers.
-Keeps only primary research papers.
+Survey/Non-Research Paper Classifier
+====================================
+Classifies an author's publications, excludes surveys and non-papers
+(editorials, errata, ...), and recalculates h-index, i10-index and citations.
+
+Modes:
+  * learned - learned hybrid combiner (default)
+  * or      - DistilBERT OR title keyword filter (the paper's hybrid)
+  * model   - DistilBERT only
+  * keyword - title keyword filter only
+
+Categories:
+  * non-paper         - books, editorials, errata, ... (by publication type or title)
+  * survey            - detected survey
+  * magazine-overview - flagged by the classifier, but a magazine article that does
+                        not describe itself as a survey/tutorial/overview/review.
+                        Kept as research by default (--exclude-magazine-overviews to drop)
+  * research          - everything else
 """
 
 import os
+from typing import Optional, Tuple
+
+import numpy as np
 import pandas as pd
-import torch
-from typing import List, Tuple
 from tabulate import tabulate
-from torch.utils.data import Dataset, DataLoader
-from transformers import DistilBertTokenizerFast, DistilBertForSequenceClassification, DistilBertConfig
-from tqdm import tqdm
-from safetensors.torch import load_file
+
+from text_utils import (NON_PAPER_TITLE, NON_PAPER_TYPES, MAGAZINE_VENUE, TITLE_SURVEY_TERMS,
+                        EXPLICIT_SURVEY_CUES, paper_text, clean_text)
+from inference import load_model, load_config, predict_survey_proba
+from hybrid import LearnedHybrid, or_rule, keyword_is_survey
+
+MODES = ("learned", "or", "model", "keyword")
 
 
 # ============================================================================
-# KEYWORD-BASED CLASSIFICATION (Title-only)
+# INPUT NORMALIZATION
 # ============================================================================
 
-def keyword_is_survey(title: str, abstract: str) -> bool:
-    """
-    Check if paper is survey/editorial based on TITLE ONLY.
-    Returns True for surveys, reviews, editorials, and other non-research papers.
-    """
-    title_lower = title.lower().strip()
-    
-    # First, exclude guest editorials (they're not surveys but still non-research)
-    # We check them separately to avoid false positives with "review" in editorial titles
-    if any(kw in title_lower for kw in ["guest editorial", "editorial:"]):
-        return True
-    
-    # Strong survey/review indicators in title
-    strong_keywords = [
-        "survey",
-        "review",  # ✅ Added: Includes "systematic review", "literature review", etc.
-        "systematic review", 
-        "literature review",
-        "comprehensive survey",
-        "state-of-the-art",
-        "state of the art"
-    ]
-    
-    for keyword in strong_keywords:
-        if keyword in title_lower:
-            return True
-        
-    return False
+def prepare_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Map Semantic Scholar / dataset column names to Title, Abstract, ReferenceCount."""
+    out = pd.DataFrame(index=df.index)
+    out["Title"] = df.get("Title", df.get("title", pd.Series("", index=df.index))).fillna("").astype(str)
+    out["Abstract"] = df.get("Abstract", df.get("abstract", pd.Series("", index=df.index))).fillna("").astype(str)
+
+    if "ReferenceCount" in df.columns:
+        out["ReferenceCount"] = pd.to_numeric(df["ReferenceCount"], errors="coerce").fillna(0)
+    elif "references" in df.columns:
+        out["ReferenceCount"] = df["references"].fillna("").map(
+            lambda s: len([r for r in str(s).split(";") if r.strip()]))
+    else:
+        out["ReferenceCount"] = 0
+
+    out["Venue"] = df.get("Venue", df.get("venue", pd.Series("", index=df.index))).fillna("").astype(str)
+    out["Type"] = df.get("Type", df.get("type", pd.Series("", index=df.index))).fillna("").astype(str)
+    return out
 
 
 # ============================================================================
-# DATASET WRAPPER
+# CLASSIFICATION
 # ============================================================================
 
-class SurveyDataset(Dataset):
-    def __init__(self, texts: List[str], tokenizer: DistilBertTokenizerFast, max_length: int = 256):
-        self.encodings = tokenizer(texts, truncation=True, padding=True, max_length=max_length)
-
-    def __len__(self) -> int:
-        return len(self.encodings['input_ids'])
-
-    def __getitem__(self, idx: int) -> dict:
-        return {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
-
-
-# ============================================================================
-# HYBRID MODEL CLASSIFICATION
-# ============================================================================
-
-def classify_with_hybrid_model(
-    df: pd.DataFrame,
-    model_path: str = './distilbert_survey_model',
+def classify_frame(
+    frame: pd.DataFrame,
+    model_path: str = "./distilbert_survey_model",
+    mode: str = "learned",
+    threshold: Optional[float] = None,
     batch_size: int = 32,
-    threshold: float = 0.85,
-    use_keywords: bool = True
-) -> List[int]:
+    use_refs: bool = True,
+    show_progress: bool = False,
+    survey_proba: Optional[np.ndarray] = None,
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Classify papers using hybrid approach:
-    1. Keywords in title → non-research paper (if enabled)
-    2. Model prediction → research vs non-research
-    
-    Returns:
-        List of predictions: 0 = non-research (exclude), 1 = research (keep)
+    Returns (is_survey, score) arrays. is_survey: 1 = survey, 0 = not a survey.
+    Pass survey_proba to reuse DistilBERT probabilities computed earlier.
     """
-    
-    # Load tokenizer and model
-    tokenizer = DistilBertTokenizerFast.from_pretrained(model_path)
-    config = DistilBertConfig.from_pretrained(model_path)
-    model = DistilBertForSequenceClassification(config=config)
-    
-    # Reconstruct custom classifier
-    model.classifier = torch.nn.Sequential(
-        torch.nn.Dropout(0.2),
-        torch.nn.Linear(config.dim, 2)
-    )
-    
-    # Load trained weights
-    state_dict = load_file(f"{model_path}/model.safetensors")
-    model.load_state_dict(state_dict, strict=False)
-    model.eval()
+    if mode not in MODES:
+        raise ValueError(f"mode must be one of {MODES}")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    if mode == "keyword":
+        is_survey = np.array([keyword_is_survey(t) for t in frame["Title"]], dtype=int)
+        return is_survey, is_survey.astype(float)
 
-    # Display GPU info
-    if torch.cuda.is_available():
-        print(f"🔥 Using GPU: {torch.cuda.get_device_name(0)}")
-    else:
-        print("⚠️  Running on CPU (slower)")
-    
-    print(f"🎯 Model threshold: {threshold}")
-    print(f"📝 Keyword override: {'Enabled (Title-only)' if use_keywords else 'Disabled'}")
+    config = load_config(model_path)
+    threshold = config["threshold"] if threshold is None else threshold
 
-    # Prepare texts (title + abstract)
-    texts = (df['title'].astype(str).fillna('') + " " +
-             df['abstract'].astype(str).fillna('')).tolist()
+    if survey_proba is None:
+        tokenizer, model = load_model(model_path)
+        texts = [paper_text(t, a) for t, a in zip(frame["Title"], frame["Abstract"])]
+        survey_proba = predict_survey_proba(texts, tokenizer, model, batch_size=batch_size,
+                                            max_length=config.get("max_length", 384),
+                                            show_progress=show_progress)
 
-    # Create dataset and dataloader
-    dataset = SurveyDataset(texts, tokenizer)
-    dataloader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        num_workers=4,
-        pin_memory=True,
-        persistent_workers=True
-    )
+    if mode == "model":
+        return (survey_proba >= threshold).astype(int), survey_proba
+    if mode == "or":
+        return or_rule(survey_proba, frame["Title"], threshold), survey_proba
 
-    # Get model predictions
-    all_probs = []
-    with torch.no_grad():
-        for batch in tqdm(dataloader, desc="🤖 Model Processing", unit="batch"):
-            input_ids = batch['input_ids'].to(device, non_blocking=True)
-            attention_mask = batch['attention_mask'].to(device, non_blocking=True)
+    combiner = LearnedHybrid.load(model_path)
+    if combiner is None:
+        print("⚠️  No hybrid combiner found for this model; falling back to the OR rule")
+        return or_rule(survey_proba, frame["Title"], threshold), survey_proba
+    scores = combiner.predict_proba(frame, survey_proba, use_refs=use_refs)
+    return (scores >= combiner.threshold).astype(int), scores
 
-            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-            logits = outputs.logits
-            probs = torch.nn.functional.softmax(logits, dim=-1)
-            survey_probs = probs[:, 0].cpu().numpy()
-            all_probs.extend(survey_probs)
 
-    # Convert probabilities to predictions
-    model_preds = [0 if prob > threshold else 1 for prob in all_probs]
-    
-    # Apply keyword override if enabled
-    if use_keywords:
-        final_preds = []
-        keyword_overrides = 0
-        
-        for idx, (title, abstract, model_pred) in enumerate(zip(
-            df['title'].fillna(''), 
-            df['abstract'].fillna(''), 
-            model_preds
-        )):
-            if keyword_is_survey(title, abstract):
-                final_preds.append(0)  # Non-research
-                if model_pred == 1:  # Model disagreed
-                    keyword_overrides += 1
-            else:
-                final_preds.append(model_pred)
-        
-        print(f"📊 Keyword overrides: {keyword_overrides} papers")
-        return final_preds
-    else:
-        return model_preds
+def is_non_paper(frame: pd.DataFrame) -> np.ndarray:
+    """Books, editorials, errata, ...: by publication type when known, otherwise by title."""
+    by_title = frame["Title"].map(lambda t: bool(NON_PAPER_TITLE.search(clean_text(t))))
+    by_type = frame["Type"].map(lambda t: bool(NON_PAPER_TYPES.search(t)))
+    return (by_title | by_type).values
+
+
+def is_magazine_without_survey_signal(frame: pd.DataFrame) -> np.ndarray:
+    """
+    Magazine articles that do not explicitly present themselves as a survey: no survey term
+    in the title, no survey phrasing in the abstract, and not typed 'Review' by the indexer.
+    """
+    magazine = frame["Venue"].str.strip().map(lambda v: bool(MAGAZINE_VENUE.search(v)))
+    explicit = (frame["Title"].map(lambda t: bool(TITLE_SURVEY_TERMS.search(clean_text(t)))) |
+                frame["Abstract"].map(lambda a: bool(EXPLICIT_SURVEY_CUES.search(clean_text(a)))) |
+                frame["Type"].str.contains(r"\breview\b", case=False, regex=True))
+    return (magazine & ~explicit).values
+
+
+def has_no_metadata(frame: pd.DataFrame) -> np.ndarray:
+    """Only a title is known (no abstract, venue or publication type): typically books and chapters."""
+    no_abstract = frame["Abstract"].map(lambda a: len(clean_text(a).split()) < 10)
+    return (no_abstract & (frame["Venue"].str.strip() == "") & (frame["Type"].str.strip() == "")).values
+
+
+def categorize(frame: pd.DataFrame, is_survey: np.ndarray) -> np.ndarray:
+    """Return one of: non-paper, survey, magazine-overview, research."""
+    # With only a title, book titles look like overviews; require an explicit survey keyword instead
+    title_only = has_no_metadata(frame)
+    keyword = np.array([keyword_is_survey(t) for t in frame["Title"]], dtype=int)
+    is_survey = np.where(title_only, keyword, is_survey)
+
+    non_paper = is_non_paper(frame)
+    magazine_only = is_magazine_without_survey_signal(frame)
+    return np.where(non_paper, "non-paper",
+           np.where(is_survey == 1, np.where(magazine_only, "magazine-overview", "survey"), "research"))
 
 
 # ============================================================================
@@ -172,9 +149,9 @@ def classify_with_hybrid_model(
 
 def calculate_indices(df: pd.DataFrame) -> Tuple[int, int]:
     """Calculate h-index and i10-index from citation counts."""
-    citations = df['citationCount'].fillna(0).astype(int).sort_values(ascending=False).values
-    h_index = sum(c >= (i + 1) for i, c in enumerate(citations))
-    i10_index = sum(c >= 10 for c in citations)
+    citations = df["citationCount"].fillna(0).astype(int).sort_values(ascending=False).values
+    h_index = int(sum(c >= (i + 1) for i, c in enumerate(citations)))
+    i10_index = int(sum(c >= 10 for c in citations))
     return h_index, i10_index
 
 
@@ -185,140 +162,111 @@ def calculate_indices(df: pd.DataFrame) -> Tuple[int, int]:
 def exclude_predicted_surveys(
     input_csv: str,
     output_csv: str,
-    survey_csv: str = 'Survey-Papers.csv',
-    model_path: str = './distilbert_survey_model',
-    threshold: float = 0.85,
-    use_keywords: bool = True,
-    batch_size: int = 32
-) -> None:
-    """
-    Main pipeline to classify and separate research vs non-research papers.
-    
-    Args:
-        input_csv: Input CSV file path
-        output_csv: Output file for research papers
-        survey_csv: Output file for non-research papers
-        model_path: Path to trained model
-        threshold: Classification threshold (0.85 = 90.24% accuracy)
-        use_keywords: Whether to use keyword override
-        batch_size: Batch size for DataLoader
-    """
-    
-    # Validate input file
+    survey_csv: str = "Survey-Papers.csv",
+    model_path: str = "./distilbert_survey_model",
+    threshold: Optional[float] = None,
+    mode: str = "learned",
+    batch_size: int = 32,
+    exclude_magazine_overviews: bool = False,
+) -> dict:
+    """Classify papers, save research / excluded papers, and print metric changes."""
     if not os.path.exists(input_csv):
         raise FileNotFoundError(f"Input CSV file not found: {input_csv}")
 
-    # Load data
     df = pd.read_csv(input_csv)
-    
-    required_cols = {'title', 'abstract', 'citationCount'}
+    required_cols = {"title", "abstract", "citationCount"}
     if not required_cols.issubset(df.columns):
         raise KeyError(f"CSV must contain: {required_cols}")
+    df["citationCount"] = df["citationCount"].fillna(0).astype(int)
+    print(f"✅ Loaded {len(df)} papers from '{input_csv}'")
+    print(f"📝 Mode: {mode}")
 
-    # Clean data
-    df['title'] = df['title'].fillna('').astype(str)
-    df['abstract'] = df['abstract'].fillna('').astype(str)
-    df['citationCount'] = df['citationCount'].fillna(0).astype(int)
+    frame = prepare_frame(df)
+    is_survey, score = classify_frame(frame, model_path=model_path, mode=mode, threshold=threshold,
+                                      batch_size=batch_size, show_progress=True)
+    df["Category"] = categorize(frame, is_survey)
+    df["SurveyScore"] = np.round(score, 4)
+    excluded_categories = {"non-paper", "survey"} | ({"magazine-overview"} if exclude_magazine_overviews else set())
+    df["Prediction"] = (~df["Category"].isin(excluded_categories)).astype(int)  # 0 = excluded, 1 = kept
 
-    print(f"✅ Loaded {len(df)} papers from '{input_csv}'\n")
+    excluded_df = df[df["Prediction"] == 0]
+    research_df = df[df["Prediction"] == 1]
 
-    # Classify papers
-    predictions = classify_with_hybrid_model(
-        df, 
-        model_path=model_path,
-        batch_size=batch_size,
-        threshold=threshold,
-        use_keywords=use_keywords
-    )
-
-    # Add predictions to dataframe
-    df['Prediction'] = predictions
-
-    # Split into research and non-research
-    non_research_df = df[df['Prediction'] == 0]  # Surveys, editorials, etc.
-    research_df = df[df['Prediction'] == 1].drop(columns=['Prediction'])  # Keep only research
-
-    # Save files
     os.makedirs(os.path.dirname(os.path.abspath(output_csv)), exist_ok=True)
     os.makedirs(os.path.dirname(os.path.abspath(survey_csv)), exist_ok=True)
     research_df.to_csv(output_csv, index=False)
-    non_research_df.to_csv(survey_csv, index=False)
+    excluded_df.to_csv(survey_csv, index=False)
 
-    # Calculate statistics
-    total_papers = len(df)
-    excluded_papers = len(non_research_df)
-    excluded_citations = non_research_df['citationCount'].sum()
-    total_citations = df['citationCount'].sum()
+    # Statistics
+    total_papers, total_citations = len(df), int(df["citationCount"].sum())
+    excluded_citations = int(excluded_df["citationCount"].sum())
+    total_h, total_i10 = calculate_indices(df)
+    research_h, research_i10 = calculate_indices(research_df)
+    counts = df["Category"].value_counts()
+    n_surveys, n_non_papers = int(counts.get("survey", 0)), int(counts.get("non-paper", 0))
+    n_magazine = int(counts.get("magazine-overview", 0))
 
-    percent_papers_excluded = (excluded_papers / total_papers) * 100 if total_papers else 0
-    percent_citations_excluded = (excluded_citations / total_citations) * 100 if total_citations else 0
+    print(f"\n📊 Papers excluded: {len(excluded_df)} ({100 * len(excluded_df) / max(1, total_papers):.2f}%)"
+          f" — {n_surveys} surveys, {n_non_papers} books/editorials/other non-papers"
+          + (f", {n_magazine} magazine overviews" if exclude_magazine_overviews else ""))
+    if not exclude_magazine_overviews and n_magazine:
+        print(f"ℹ️  {n_magazine} magazine articles without explicit survey framing were kept "
+              f"(use --exclude-magazine-overviews to drop them)")
+    print(f"📉 Citations excluded: {excluded_citations} ({100 * excluded_citations / max(1, total_citations):.2f}%)")
 
-    total_h_index, total_i10 = calculate_indices(df)
-    research_h_index, research_i10 = calculate_indices(research_df)
-
-    # Print summary
-    print(f"\n📊 Papers excluded as non-research: {excluded_papers} ({percent_papers_excluded:.2f}%)")
-    print(f"📉 Citations excluded: {excluded_citations} ({percent_citations_excluded:.2f}%)")
-
-    # Comparison table
     comparison = [
         ["Total Papers", total_papers, len(research_df)],
         ["Total Citations", total_citations, total_citations - excluded_citations],
-        ["H-Index", total_h_index, research_h_index],
+        ["H-Index", total_h, research_h],
         ["i10-Index", total_i10, research_i10],
     ]
-
     print("\n📋 Comparison Table:")
-    print(tabulate(comparison, headers=["Metric", "With Non-Research", "Research Only"], tablefmt="grid"))
-
-    # Final output
+    print(tabulate(comparison, headers=["Metric", "All Papers", "Research Only"], tablefmt="grid"))
     print(f"\n✅ Research papers saved to: '{output_csv}'")
-    print(f"✅ Non-research papers (surveys/editorials) saved to: '{survey_csv}'")
+    print(f"✅ Excluded papers (surveys/non-papers) saved to: '{survey_csv}'")
+
+    return {
+        "papers": total_papers, "excluded": len(excluded_df), "surveys": n_surveys,
+        "non_papers": n_non_papers, "magazine_overviews": n_magazine,
+        "citations": total_citations, "excluded_citations": excluded_citations,
+        "h_before": total_h, "h_after": research_h, "i10_before": total_i10, "i10_after": research_i10,
+    }
 
 
-# Alias/Wrapper to preserve pipeline name called by main.py
 def run_classification_pipeline(
     input_csv: str,
     output_csv: str,
     survey_csv: str,
     model_path: str,
     batch_size: int = 32,
-    threshold: float = 0.85
-) -> None:
-    exclude_predicted_surveys(
+    threshold: Optional[float] = None,
+    mode: str = "learned",
+    exclude_magazine_overviews: bool = False,
+) -> dict:
+    return exclude_predicted_surveys(
         input_csv=input_csv,
         output_csv=output_csv,
         survey_csv=survey_csv,
         model_path=model_path,
         threshold=threshold,
-        use_keywords=True,
-        batch_size=batch_size
+        mode=mode,
+        batch_size=batch_size,
+        exclude_magazine_overviews=exclude_magazine_overviews,
     )
 
-
-# ============================================================================
-# ENTRY POINT
-# ============================================================================
 
 if __name__ == "__main__":
-    # Configuration
-    input_csv = './data/proauthor/auth1.csv'
-    output_csv = 'data/Non-Survey-Papers.csv'
-    survey_csv = 'data/Survey-Papers.csv'
-    model_dir = './distilbert_survey_model'
+    import argparse
+    parser = argparse.ArgumentParser(description="Exclude surveys and recalculate author metrics")
+    parser.add_argument("--input", type=str, default="./data/proauthor/auth1.csv")
+    parser.add_argument("--output", type=str, default="data/Non-Survey-Papers.csv")
+    parser.add_argument("--surveys", type=str, default="data/Survey-Papers.csv")
+    parser.add_argument("--model", type=str, default="./distilbert_survey_model")
+    parser.add_argument("--mode", type=str, default="learned", choices=MODES)
+    parser.add_argument("--threshold", type=float, default=None)
+    parser.add_argument("--exclude-magazine-overviews", action="store_true")
+    args = parser.parse_args()
 
-    # Run classification
-    exclude_predicted_surveys(
-        input_csv=input_csv, 
-        output_csv=output_csv, 
-        survey_csv=survey_csv, 
-        model_path=model_dir,
-        threshold=0.85,  
-        use_keywords=True  
-    )
-    
-    print(f"\n{'='*60}")
-    print("✅ PROCESS COMPLETE!")
-    print(f"{'='*60}")
-    print(f"\nResearch papers: {output_csv}")
-    print(f"Non-research papers: {survey_csv}")
+    run_classification_pipeline(args.input, args.output, args.surveys, args.model,
+                                threshold=args.threshold, mode=args.mode,
+                                exclude_magazine_overviews=args.exclude_magazine_overviews)

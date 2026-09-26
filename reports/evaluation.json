@@ -1,0 +1,305 @@
+{
+  "date": "2026-09-24",
+  "model": "E:\\Survay\\distilbert_survey_model",
+  "threshold": 0.95,
+  "hybrid_coefficients": {
+    "bert_logit": 0.493,
+    "title_terms": 2.242,
+    "abstract_survey_cues": 1.404,
+    "abstract_research_cues": -0.298,
+    "abstract_missing": 0.262,
+    "log_refs": 0.807,
+    "refs_missing": 2.985
+  },
+  "test_split": {
+    "n": 1925,
+    "surveys": 963,
+    "results": {
+      "Keyword only (title)": {
+        "acc": 0.787012987012987,
+        "prec": 1.0,
+        "rec": 0.5742471443406023,
+        "f1": 0.7295514511873351
+      },
+      "TF-IDF + SVM": {
+        "acc": 0.9475324675324676,
+        "prec": 0.9654427645788337,
+        "rec": 0.9283489096573209,
+        "f1": 0.9465325569084172
+      },
+      "DistilBERT only": {
+        "acc": 0.9522077922077922,
+        "prec": 0.9687836383207751,
+        "rec": 0.9345794392523364,
+        "f1": 0.9513742071881607
+      },
+      "Hybrid (OR, paper)": {
+        "acc": 0.9522077922077922,
+        "prec": 0.9687836383207751,
+        "rec": 0.9345794392523364,
+        "f1": 0.9513742071881607
+      },
+      "Learned hybrid (title+abstract)": {
+        "acc": 0.9490909090909091,
+        "prec": 0.9800221975582686,
+        "rec": 0.9169262720664589,
+        "f1": 0.9474248927038627
+      },
+      "Learned hybrid (+ reference count)": {
+        "acc": 0.9542857142857143,
+        "prec": 0.9781420765027322,
+        "rec": 0.9293873312564901,
+        "f1": 0.9531416400425985
+      },
+      "Baseline: distilbert_survey_model_synthetic (OR, th=0.8)": {
+        "acc": 0.7828571428571428,
+        "prec": 0.8789986091794159,
+        "rec": 0.656282450674974,
+        "f1": 0.751486325802616
+      }
+    }
+  },
+  "test_split_title_only": {
+    "n": 1925,
+    "surveys": 963,
+    "results": {
+      "Keyword only (title)": {
+        "acc": 0.787012987012987,
+        "prec": 1.0,
+        "rec": 0.5742471443406023,
+        "f1": 0.7295514511873351
+      },
+      "TF-IDF + SVM": {
+        "acc": 0.8644155844155844,
+        "prec": 0.9006849315068494,
+        "rec": 0.8193146417445483,
+        "f1": 0.8580750407830342
+      },
+      "DistilBERT only": {
+        "acc": 0.8862337662337663,
+        "prec": 0.9397163120567376,
+        "rec": 0.8255451713395638,
+        "f1": 0.87893864013267
+      },
+      "Hybrid (OR, paper)": {
+        "acc": 0.8862337662337663,
+        "prec": 0.9397163120567376,
+        "rec": 0.8255451713395638,
+        "f1": 0.87893864013267
+      },
+      "Learned hybrid (title+abstract)": {
+        "acc": 0.8867532467532467,
+        "prec": 0.9482551143200962,
+        "rec": 0.818276220145379,
+        "f1": 0.8784838350055741
+      },
+      "Learned hybrid (+ reference count)": {
+        "acc": 0.9012987012987013,
+        "prec": 0.9499417927823051,
+        "rec": 0.8473520249221184,
+        "f1": 0.8957189901207464
+      },
+      "Baseline: distilbert_survey_model_synthetic (OR, th=0.8)": {
+        "acc": 0.7854545454545454,
+        "prec": 0.9270186335403726,
+        "rec": 0.6199376947040498,
+        "f1": 0.7429993777224643
+      }
+    }
+  },
+  "hand_labeled": {
+    "n": 323,
+    "surveys": 117,
+    "labeled_by": "claude (unverified)",
+    "results": {
+      "Keyword only (title)": {
+        "acc": 0.7492260061919505,
+        "prec": 1.0,
+        "rec": 0.3076923076923077,
+        "f1": 0.47058823529411764,
+        "acc_reweighted": 0.9462835834542187,
+        "prec_reweighted": 1.0,
+        "rec_reweighted": 0.26380970526593484,
+        "survey_rate_true": 0.07296539621618528,
+        "survey_rate_pred": 0.019248979670404,
+        "f1_confident": 0.549618320610687
+      },
+      "TF-IDF + SVM": {
+        "acc": 0.8761609907120743,
+        "prec": 0.7730496453900709,
+        "rec": 0.9316239316239316,
+        "f1": 0.8449612403100775,
+        "acc_reweighted": 0.9369873956611731,
+        "prec_reweighted": 0.5390541731358315,
+        "rec_reweighted": 0.9413756210520144,
+        "survey_rate_true": 0.07296539621618528,
+        "survey_rate_pred": 0.12742289847927712,
+        "f1_confident": 0.883495145631068
+      },
+      "DistilBERT only": {
+        "acc": 0.8978328173374613,
+        "prec": 0.78,
+        "rec": 1.0,
+        "f1": 0.8764044943820225,
+        "acc_reweighted": 0.9459333589629934,
+        "prec_reweighted": 0.574385783255254,
+        "rec_reweighted": 1.0,
+        "survey_rate_true": 0.07296539621618528,
+        "survey_rate_pred": 0.12703203725319198,
+        "f1_confident": 0.9047619047619048
+      },
+      "Hybrid (OR, paper)": {
+        "acc": 0.8978328173374613,
+        "prec": 0.78,
+        "rec": 1.0,
+        "f1": 0.8764044943820225,
+        "acc_reweighted": 0.9459333589629934,
+        "prec_reweighted": 0.574385783255254,
+        "rec_reweighted": 1.0,
+        "survey_rate_true": 0.07296539621618528,
+        "survey_rate_pred": 0.12703203725319198,
+        "f1_confident": 0.9047619047619048
+      },
+      "Learned hybrid (title+abstract)": {
+        "acc": 0.9040247678018576,
+        "prec": 0.7945205479452054,
+        "rec": 0.9914529914529915,
+        "f1": 0.8821292775665399,
+        "acc_reweighted": 0.973018277440891,
+        "prec_reweighted": 0.7325279574311608,
+        "rec_reweighted": 0.9926719526315018,
+        "survey_rate_true": 0.07296539621618528,
+        "survey_rate_pred": 0.09887773101582747,
+        "f1_confident": 0.9038461538461539
+      },
+      "Learned hybrid (+ reference count)": {
+        "acc": 0.9040247678018576,
+        "prec": 0.7945205479452054,
+        "rec": 0.9914529914529915,
+        "f1": 0.8821292775665399,
+        "acc_reweighted": 0.9678151712972047,
+        "prec_reweighted": 0.7176713681482708,
+        "rec_reweighted": 0.9213627236886459,
+        "survey_rate_true": 0.07296539621618528,
+        "survey_rate_pred": 0.09367462487214132,
+        "f1_confident": 0.9038461538461539
+      },
+      "Learned hybrid + magazine rule": {
+        "acc": 0.9040247678018576,
+        "prec": 0.8771929824561403,
+        "rec": 0.8547008547008547,
+        "f1": 0.8658008658008658,
+        "acc_reweighted": 0.973018277440891,
+        "prec_reweighted": 0.8771929824561403,
+        "rec_reweighted": 0.7328047368498191,
+        "survey_rate_true": 0.07296539621618528,
+        "survey_rate_pred": 0.060955102289612664,
+        "f1_confident": 0.9263157894736842
+      },
+      "Baseline: distilbert_survey_model_synthetic (OR, th=0.8)": {
+        "acc": 0.7492260061919505,
+        "prec": 0.8214285714285714,
+        "rec": 0.39316239316239315,
+        "f1": 0.5317919075144508,
+        "acc_reweighted": 0.9046587343047294,
+        "prec_reweighted": 0.34367342059649747,
+        "rec_reweighted": 0.33709017895091675,
+        "survey_rate_true": 0.07296539621618528,
+        "survey_rate_pred": 0.07156770641456207,
+        "f1_confident": 0.609271523178808
+      }
+    }
+  },
+  "author_impact": [
+    {
+      "Author": "Zhu Han",
+      "File": "han.csv",
+      "Papers": 1353,
+      "Surveys": 114,
+      "Magazine overviews": 21,
+      "Non-papers": 17,
+      "Papers excluded": 8.425720620842572,
+      "Citation reduction": 21.869882811943786,
+      "h-index": "128 \u2192 117",
+      "h-index drop": 11.0,
+      "i10-index reduction": 9.259259259259256,
+      "Citation reduction (+ magazine)": 25.204687522248644,
+      "h-index drop (+ magazine)": 14.0
+    },
+    {
+      "Author": "L. Hanzo",
+      "File": "hanzo.csv",
+      "Papers": 2710,
+      "Surveys": 180,
+      "Magazine overviews": 23,
+      "Non-papers": 10,
+      "Papers excluded": 6.642066420664207,
+      "Citation reduction": 31.770505086882146,
+      "h-index": "131 \u2192 108",
+      "h-index drop": 23.0,
+      "i10-index reduction": 10.274509803921571,
+      "Citation reduction (+ magazine)": 34.77199063653552,
+      "h-index drop (+ magazine)": 26.0
+    },
+    {
+      "Author": "E. Hossain",
+      "File": "hossain.csv",
+      "Papers": 733,
+      "Surveys": 125,
+      "Magazine overviews": 9,
+      "Non-papers": 28,
+      "Papers excluded": 17.053206002728512,
+      "Citation reduction": 37.52556747318533,
+      "h-index": "107 \u2192 80",
+      "h-index drop": 27.0,
+      "i10-index reduction": 22.51184834123223,
+      "Citation reduction (+ magazine)": 40.93788974806685,
+      "h-index drop (+ magazine)": 29.0
+    },
+    {
+      "Author": "D. Niyato",
+      "File": "niyato.csv",
+      "Papers": 2514,
+      "Surveys": 350,
+      "Magazine overviews": 68,
+      "Non-papers": 44,
+      "Papers excluded": 13.922036595067622,
+      "Citation reduction": 38.607936960216946,
+      "h-index": "143 \u2192 114",
+      "h-index drop": 29.0,
+      "i10-index reduction": 18.343653250773993,
+      "Citation reduction (+ magazine)": 41.90927223242972,
+      "h-index drop (+ magazine)": 32.0
+    },
+    {
+      "Author": "F. Yu",
+      "File": "yu.csv",
+      "Papers": 985,
+      "Surveys": 86,
+      "Magazine overviews": 13,
+      "Non-papers": 33,
+      "Papers excluded": 8.730964467005077,
+      "Citation reduction": 30.1905840638235,
+      "h-index": "101 \u2192 86",
+      "h-index drop": 15.0,
+      "i10-index reduction": 11.962616822429906,
+      "Citation reduction (+ magazine)": 33.97271742342165,
+      "h-index drop (+ magazine)": 17.0
+    },
+    {
+      "Author": "Average",
+      "File": "",
+      "Papers": "",
+      "Surveys": "",
+      "Magazine overviews": "",
+      "Non-papers": "",
+      "Papers excluded": 10.9547988212616,
+      "Citation reduction": 31.992895279210348,
+      "h-index": "",
+      "h-index drop": 21.0,
+      "i10-index reduction": 14.47037749552339,
+      "Citation reduction (+ magazine)": 35.35931151254048,
+      "h-index drop (+ magazine)": 23.6
+    }
+  ]
+}

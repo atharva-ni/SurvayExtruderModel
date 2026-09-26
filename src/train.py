@@ -1,37 +1,98 @@
+"""
+DistilBERT Survey Classifier Training
+=====================================
+  1. Stratified split: 20% test, then 10% of the remainder as validation.
+     The test split is never used for training, early stopping or tuning.
+  2. Fine-tune DistilBERT (survey = label 0 = positive class for all metrics).
+     A share of training papers is shown with the title only, because many
+     papers in author profiles have no abstract.
+  3. Choose the DistilBERT decision threshold on the validation split
+     (with and without abstracts).
+  4. Fit the learned hybrid combiner on the same validation data.
+The split is saved with the model (data_split.csv) so evaluation reuses it.
+"""
+
 import os
 import random
 import warnings
 import argparse
+
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 from transformers import (
     DistilBertTokenizerFast,
     DistilBertForSequenceClassification,
-    DistilBertConfig,
     TrainingArguments,
     Trainer,
     EarlyStoppingCallback,
-    DataCollatorWithPadding
+    DataCollatorWithPadding,
 )
-import optuna
+
+from text_utils import MAX_LENGTH, paper_text
+from inference import predict_survey_proba, save_config, SURVEY_LABEL
+from hybrid import LearnedHybrid, best_f1_threshold
 
 warnings.simplefilter("ignore", category=FutureWarning)
 
-def set_seed(seed=42):
+BASE_MODEL = "distilbert-base-uncased"
+SPLIT_FILE = "data_split.csv"
+TITLE_ONLY_RATE = 0.25  # share of training papers shown without their abstract
+
+
+def set_seed(seed: int = 42) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-set_seed()
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# -------------------- Dataset Class -------------------- #
+# -------------------- Data -------------------- #
+def load_dataset(dataset_path: str) -> pd.DataFrame:
+    if not os.path.exists(dataset_path):
+        raise FileNotFoundError(f"Dataset not found at {dataset_path}")
+    df = pd.read_csv(dataset_path)
+    df = df[df["Label"].isin([0, 1])].dropna(subset=["Title", "Abstract"]).copy()
+    df["Label"] = df["Label"].astype(int)
+    df["Text"] = [paper_text(t, a) for t, a in zip(df["Title"], df["Abstract"])]
+    df = df[df["Text"].str.len() > 20]
+    df = df.drop_duplicates(subset="Text").reset_index(drop=True)
+    return df
+
+
+def split_dataset(df: pd.DataFrame, seed: int = 42) -> pd.DataFrame:
+    """80/20 train/test split, then 10% of train held out for validation (as in the paper)."""
+    rest, test = train_test_split(df.index, test_size=0.2, stratify=df["Label"], random_state=seed)
+    train, val = train_test_split(rest, test_size=0.1, stratify=df.loc[rest, "Label"], random_state=seed)
+    df = df.copy()
+    df.loc[train, "Split"] = "train"
+    df.loc[val, "Split"] = "val"
+    df.loc[test, "Split"] = "test"
+    return df
+
+
+def title_only_augment(df: pd.DataFrame, rate: float = TITLE_ONLY_RATE, seed: int = 42) -> pd.DataFrame:
+    """Drop the abstract for a random share of papers (in place of, not in addition to, the full text)."""
+    df = df.copy()
+    rng = np.random.default_rng(seed)
+    drop = rng.random(len(df)) < rate
+    df.loc[drop, "Text"] = [paper_text(t, "") for t in df.loc[drop, "Title"]]
+    df.loc[drop, "Abstract"] = ""
+    return df
+
+
+def with_title_only_copies(df: pd.DataFrame) -> pd.DataFrame:
+    """Each paper twice: with its abstract and with the title only."""
+    title_only = df.copy()
+    title_only["Abstract"] = ""
+    title_only["Text"] = [paper_text(t, "") for t in title_only["Title"]]
+    return pd.concat([df, title_only], ignore_index=True)
+
+
 class SurveyDataset(torch.utils.data.Dataset):
     def __init__(self, encodings, labels):
         self.encodings = encodings
@@ -41,219 +102,202 @@ class SurveyDataset(torch.utils.data.Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        item = {k: torch.tensor(v[idx]) for k, v in self.encodings.items()}
-        item['labels'] = torch.tensor(self.labels[idx])
+        item = {k: v[idx] for k, v in self.encodings.items()}
+        item["labels"] = int(self.labels[idx])
         return item
 
 
-# -------------------- Metrics -------------------- #
-def compute_metrics(pred):
-    # Retaining user's exact threshold logic
-    preds = pred.predictions[:, 1] > 0.55  # Custom threshold
+# -------------------- Metrics (survey = positive) -------------------- #
+def survey_metrics(is_survey_true: np.ndarray, is_survey_pred: np.ndarray) -> dict:
     precision, recall, f1, _ = precision_recall_fscore_support(
-        pred.label_ids, preds, average="binary", zero_division=0
+        is_survey_true, is_survey_pred, average="binary", pos_label=1, zero_division=0
     )
-    acc = accuracy_score(pred.label_ids, preds)
-    return {"accuracy": acc, "precision": precision, "recall": recall, "f1": f1}
+    return {"accuracy": accuracy_score(is_survey_true, is_survey_pred),
+            "precision": precision, "recall": recall, "f1": f1}
 
 
-def run_training(dataset_path, output_dir="./distilbert_survey_model"):
-    """
-    User's exact training code, preserved with configurable paths.
-    """
-    print(f"✅ Using device: {device}")
-    
-    # -------------------- Load and Clean Data -------------------- #
-    if not os.path.exists(dataset_path):
-        raise FileNotFoundError(f"Dataset not found at {dataset_path}")
+def compute_metrics(pred):
+    logits, labels = pred.predictions, pred.label_ids
+    is_survey_pred = (np.argmax(logits, axis=1) == SURVEY_LABEL).astype(int)
+    return survey_metrics((labels == SURVEY_LABEL).astype(int), is_survey_pred)
 
-    df = pd.read_csv(dataset_path)[['Title', 'Abstract', 'Label']].dropna()
-    df = df[~df[['Title', 'Abstract']].apply(lambda x: x.str.strip().eq('').any(), axis=1)]
-    df['Text'] = df['Title'] + ' ' + df['Abstract']
-    print("📊 Label distribution:\n", df['Label'].value_counts())
 
-    train_texts, val_texts, train_labels, val_labels = train_test_split(
-        df['Text'].tolist(),
-        df['Label'].tolist(),
-        test_size=0.2,
-        stratify=df['Label'],
-        random_state=42
-    )
+class WeightedLossTrainer(Trainer):
+    """Cross-entropy with class weights (the Trainer ignores model.loss_fct)."""
 
-    # -------------------- Tokenization -------------------- #
-    tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
-    train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=512)
-    val_encodings = tokenizer(val_texts, truncation=True, padding=True, max_length=512)
+    def __init__(self, *args, class_weights=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.class_weights = class_weights
 
-    train_dataset = SurveyDataset(train_encodings, train_labels)
-    val_dataset = SurveyDataset(val_encodings, val_labels)
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+        weight = self.class_weights.to(outputs.logits.device) if self.class_weights is not None else None
+        loss = torch.nn.functional.cross_entropy(outputs.logits.float(), labels, weight=weight)
+        return (loss, outputs) if return_outputs else loss
 
-    # -------------------- Class Weights -------------------- #
-    class_weights = compute_class_weight('balanced', classes=np.unique(train_labels), y=train_labels)
-    class_weights_tensor = torch.tensor(class_weights, dtype=torch.float).to(device)
 
-    # -------------------- Model Config -------------------- #
-    config = DistilBertConfig.from_pretrained(
-        "distilbert-base-uncased",
+def build_model(dropout: float = 0.2) -> DistilBertForSequenceClassification:
+    return DistilBertForSequenceClassification.from_pretrained(
+        BASE_MODEL,
         num_labels=2,
-        dropout=0.2,
-        attention_dropout=0.2
+        id2label={0: "survey", 1: "non-survey"},
+        label2id={"survey": 0, "non-survey": 1},
+        dropout=dropout,
+        attention_dropout=dropout,
+        seq_classif_dropout=dropout,
     )
-    model = DistilBertForSequenceClassification.from_pretrained(
-        "distilbert-base-uncased", config=config
-    ).to(device)
 
-    model.classifier = torch.nn.Sequential(
-        torch.nn.Dropout(0.2),
-        torch.nn.Linear(config.dim, 2)
-    )
-    model.loss_fct = torch.nn.CrossEntropyLoss(weight=class_weights_tensor)
 
-    # -------------------- Training Args -------------------- #
-    training_args = TrainingArguments(
-        output_dir="./results",
-        num_train_epochs=3,
-        per_device_train_batch_size=16,
-        per_device_eval_batch_size=32,
-        evaluation_strategy="steps",
-        eval_steps=100,
-        save_strategy="steps",
-        save_steps=100,
-        logging_steps=50,
-        load_best_model_at_end=True,
+def make_trainer(model, tokenizer, train_df, val_df, output_dir, epochs, batch_size, lr,
+                 weight_decay=0.01, seed=42, save_best=True) -> Trainer:
+    def encode(frame):
+        enc = tokenizer(frame["Text"].tolist(), truncation=True, max_length=MAX_LENGTH)
+        return SurveyDataset(enc, frame["Label"].values)
+
+    labels = train_df["Label"].values
+    weights = compute_class_weight("balanced", classes=np.array([0, 1]), y=labels)
+    total_steps = epochs * int(np.ceil(len(train_df) / batch_size))
+
+    args = TrainingArguments(
+        output_dir=output_dir,
+        num_train_epochs=epochs,
+        per_device_train_batch_size=batch_size,
+        per_device_eval_batch_size=64,
+        learning_rate=lr,
+        weight_decay=weight_decay,
+        warmup_steps=int(0.1 * total_steps),
+        lr_scheduler_type="linear",
+        eval_strategy="epoch",
+        save_strategy="epoch" if save_best else "no",
+        load_best_model_at_end=save_best,
         metric_for_best_model="f1",
         greater_is_better=True,
-        weight_decay=0.1297,
-        learning_rate=1.136e-5,
-        warmup_ratio=0.1,
-        lr_scheduler_type="cosine",
+        save_total_limit=1,
+        logging_steps=50,
         fp16=torch.cuda.is_available(),
-        logging_dir="./logs",
-        seed=42,
+        seed=seed,
         report_to="none",
-        save_total_limit=2,
-        gradient_checkpointing=True,
-        max_grad_norm=1.0
+        dataloader_num_workers=0,
     )
-
-    # -------------------- Trainer -------------------- #
-    trainer = Trainer(
+    return WeightedLossTrainer(
         model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        tokenizer=tokenizer,
+        args=args,
+        train_dataset=encode(train_df),
+        eval_dataset=encode(val_df),
+        processing_class=tokenizer,
         data_collator=DataCollatorWithPadding(tokenizer),
         compute_metrics=compute_metrics,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=2)]
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=2)] if save_best else None,
+        class_weights=torch.tensor(weights, dtype=torch.float),
     )
+
+
+# -------------------- Training -------------------- #
+def run_training(dataset_path, output_dir="./distilbert_survey_model", epochs=3, batch_size=16, lr=2e-5, seed=42):
+    set_seed(seed)
+    print(f"✅ Using device: {'cuda (' + torch.cuda.get_device_name(0) + ')' if torch.cuda.is_available() else 'cpu'}")
+
+    df = split_dataset(load_dataset(dataset_path), seed=seed)
+    train_df, val_df, test_df = (df[df["Split"] == s] for s in ("train", "val", "test"))
+    print(f"📊 {len(df)} papers → train {len(train_df)}, val {len(val_df)}, test {len(test_df)} "
+          f"(surveys: {(df['Label'] == 0).sum()}, non-surveys: {(df['Label'] == 1).sum()})")
+
+    tokenizer = DistilBertTokenizerFast.from_pretrained(BASE_MODEL)
+    trainer = make_trainer(build_model(), tokenizer, title_only_augment(train_df, seed=seed), val_df,
+                           output_dir=os.path.join("results", "training"),
+                           epochs=epochs, batch_size=batch_size, lr=lr, seed=seed)
 
     print("\n🚀 Training started...\n")
     trainer.train()
 
-    # -------------------- Save -------------------- #
-    print(f"💾 Saving model to {output_dir}")
-    model.save_pretrained(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    trainer.save_model(output_dir)
     tokenizer.save_pretrained(output_dir)
+    model = trainer.model.eval()
+
+    # ---- Threshold and hybrid combiner, chosen on validation papers with and without abstracts ----
+    val_both = with_title_only_copies(val_df)
+    val_proba = predict_survey_proba(val_both["Text"].tolist(), tokenizer, model)
+    val_is_survey = (val_both["Label"].values == SURVEY_LABEL).astype(int)
+    threshold = best_f1_threshold(val_is_survey, val_proba)
+
+    combiner = LearnedHybrid().fit(val_both, val_proba, val_is_survey, seed=seed)
+    combiner.save(output_dir)
+
+    save_config(output_dir, {
+        "threshold": threshold,
+        "max_length": MAX_LENGTH,
+        "base_model": BASE_MODEL,
+        "dataset": os.path.abspath(dataset_path),
+        "labels": {"0": "survey", "1": "non-survey"},
+    })
+    df.drop(columns="Text").to_csv(os.path.join(output_dir, SPLIT_FILE), index=False)
+
+    # ---- Quick test-split report (full comparison: python main.py evaluate) ----
+    test_proba = predict_survey_proba(test_df["Text"].tolist(), tokenizer, model)
+    test_is_survey = (test_df["Label"].values == SURVEY_LABEL).astype(int)
+    m = survey_metrics(test_is_survey, (test_proba >= threshold).astype(int))
+    h = survey_metrics(test_is_survey, combiner.predict(test_df, test_proba))
+    title_only = with_title_only_copies(test_df).iloc[len(test_df):]
+    t_proba = predict_survey_proba(title_only["Text"].tolist(), tokenizer, model)
+    t = survey_metrics(test_is_survey, (t_proba >= threshold).astype(int))
+
+    print(f"\n💾 Model, threshold ({threshold:.2f}) and hybrid combiner saved to {output_dir}")
+    print(f"🔧 Hybrid coefficients: {combiner.coefficients()}")
+    print("\n📊 Held-out test split (survey = positive class):")
+    for name, r in (("DistilBERT", m), ("Learned hybrid", h), ("DistilBERT, title only", t)):
+        print(f"   {name:22s} acc {r['accuracy']:.3f}  prec {r['precision']:.3f}  "
+              f"rec {r['recall']:.3f}  F1 {r['f1']:.3f}")
     print("✅ Training complete.")
 
-    # -------------------- Evaluation -------------------- #
-    val_encodings_eval = tokenizer(val_texts, truncation=True, padding=True, max_length=512, return_tensors="pt").to(device)
-    model.eval()
-    with torch.no_grad():
-        logits = model(**val_encodings_eval).logits
-        probs = torch.softmax(logits, dim=1)[:, 1].cpu().numpy()
-        pred_labels = (probs > 0.55).astype(int)
 
-    print("\n📊 BERT-only Classification Report:")
-    print(classification_report(val_labels, pred_labels, target_names=["survey", "not survey"]))
+# -------------------- Hyperparameter tuning -------------------- #
+def run_tuning(dataset_path, n_trials=5, seed=42):
+    """Optuna search on the train/validation splits only; the test split is untouched."""
+    import optuna
 
-
-def run_tuning(dataset_path, n_trials=5):
-    """
-    Optuna hyperparameter tuning helper.
-    """
-    print(f"📊 Loading dataset for tuning: {dataset_path}")
-    df = pd.read_csv(dataset_path)[['Title', 'Abstract', 'Label']].dropna()
-    df = df[df['Label'].isin([0, 1])]
-    df['Text'] = df['Title'].astype(str) + " " + df['Abstract'].astype(str)
-    texts, labels = df['Text'].tolist(), df['Label'].tolist()
-
-    tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
-
-    def model_init():
-        return DistilBertForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
+    set_seed(seed)
+    df = split_dataset(load_dataset(dataset_path), seed=seed)
+    train_df, val_df = df[df["Split"] == "train"], df[df["Split"] == "val"]
+    tokenizer = DistilBertTokenizerFast.from_pretrained(BASE_MODEL)
 
     def objective(trial):
-        kf = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
-        f1_scores = []
+        lr = trial.suggest_float("learning_rate", 1e-5, 5e-5, log=True)
+        weight_decay = trial.suggest_float("weight_decay", 0.0, 0.1)
+        epochs = trial.suggest_int("num_train_epochs", 2, 4)
+        batch_size = trial.suggest_categorical("batch_size", [8, 16])
+        dropout = trial.suggest_float("dropout", 0.1, 0.3)
 
-        for train_index, val_index in kf.split(texts, labels):
-            train_texts = [texts[i] for i in train_index]
-            train_labels = [labels[i] for i in train_index]
-            val_texts = [texts[i] for i in val_index]
-            val_labels = [labels[i] for i in val_index]
+        trainer = make_trainer(build_model(dropout), tokenizer, title_only_augment(train_df, seed=seed), val_df,
+                               output_dir=os.path.join("results", "tuning"), epochs=epochs,
+                               batch_size=batch_size, lr=lr, weight_decay=weight_decay,
+                               seed=seed, save_best=False)
+        trainer.train()
+        return trainer.evaluate()["eval_f1"]
 
-            train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=512)
-            val_encodings = tokenizer(val_texts, truncation=True, padding=True, max_length=512)
-
-            train_dataset = SurveyDataset(train_encodings, train_labels)
-            val_dataset = SurveyDataset(val_encodings, val_labels)
-
-            training_args = TrainingArguments(
-                output_dir="./results",
-                num_train_epochs=trial.suggest_int("num_train_epochs", 3, 5),
-                per_device_train_batch_size=trial.suggest_categorical("batch_size", [8, 16]),
-                per_device_eval_batch_size=32,
-                learning_rate=trial.suggest_float("learning_rate", 1e-5, 3e-5, log=True),
-                weight_decay=trial.suggest_float("weight_decay", 0.05, 0.2),
-                evaluation_strategy="epoch",
-                save_strategy="no",
-                logging_dir="./logs",
-                seed=42,
-                report_to="none"
-            )
-
-            trainer = Trainer(
-                model_init=model_init,
-                args=training_args,
-                train_dataset=train_dataset,
-                eval_dataset=val_dataset,
-                tokenizer=tokenizer,
-                data_collator=DataCollatorWithPadding(tokenizer=tokenizer),
-                compute_metrics=compute_metrics,
-            )
-
-            trainer.train()
-            eval_metrics = trainer.evaluate()
-            f1_scores.append(eval_metrics.get("eval_f1", 0.0))
-
-        return np.mean(f1_scores)
-
-    print(f"🚀 Starting Optuna tuning with {n_trials} trials...")
+    print(f"🚀 Starting Optuna tuning with {n_trials} trials (validation F1, survey = positive)...")
     study = optuna.create_study(direction="maximize")
     study.optimize(objective, n_trials=n_trials)
 
     print("\n🏆 Tuning Complete!")
-    print(f"Best Trial F1 Score: {study.best_value:.4f}")
-    print("Best Hyperparameters:")
+    print(f"Best validation F1: {study.best_value:.4f}")
     for key, value in study.best_params.items():
         print(f"  • {key}: {value}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="DistilBERT Classifier Training & Tuning")
-    parser.add_argument("--dataset", type=str, default=os.path.join("data", "dataset.csv"), help="Path to input dataset CSV")
-    parser.add_argument("--output_dir", type=str, default="./distilbert_survey_model", help="Path to save model weights")
-    parser.add_argument("--tune", action="store_true", help="Run hyperparameter tuning instead of training")
-    parser.add_argument("--trials", type=int, default=5, help="Number of tuning trials for Optuna")
-
+    parser = argparse.ArgumentParser(description="DistilBERT survey classifier training & tuning")
+    parser.add_argument("--dataset", type=str, default=os.path.join("data", "real_dataset.csv"))
+    parser.add_argument("--output_dir", type=str, default="./distilbert_survey_model")
+    parser.add_argument("--epochs", type=int, default=3)
+    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--lr", type=float, default=2e-5)
+    parser.add_argument("--tune", action="store_true")
+    parser.add_argument("--trials", type=int, default=5)
     args = parser.parse_args()
 
     if args.tune:
         run_tuning(args.dataset, n_trials=args.trials)
     else:
-        run_training(
-            dataset_path=args.dataset,
-            output_dir=args.output_dir
-        )
+        run_training(args.dataset, args.output_dir, args.epochs, args.batch_size, args.lr)

@@ -26,3 +26,7 @@ distilbert_survey_model/
 logs/
 .optuna/
 optuna_study.db
+
+# API response cache
+data/cache/
+distilbert_survey_model*/

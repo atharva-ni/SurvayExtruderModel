@@ -1,81 +1,50 @@
+"""
+Print classification metrics (survey = positive class) for a labeled CSV.
+Usage: python visualization/ReportMatrics.py [--input data/eval_to_label.csv] [--mode learned]
+"""
+
+import os
+import sys
+import argparse
+
+import numpy as np
 import pandas as pd
-import torch
-from transformers import DistilBertTokenizerFast, DistilBertForSequenceClassification
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
 
-# Survey-related keywords
-survey_keywords = [
-    "survey", "review", "overview", "comparative",
-    "taxonomy", "state of the art", "systematic"
-]
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "src"))
 
-def keyword_is_survey(text):
-    text = text.lower()
-    return any(keyword in text for keyword in survey_keywords)
+from classifier import prepare_frame, classify_frame, MODES  # noqa: E402
 
-def load_data(df):
-    texts = (df['title'].astype(str) + " " + df['abstract'].astype(str)).tolist()
-    return [t.lower() for t in texts]
 
-def classify_with_hybrid_model(texts, model_path, threshold=0.8):
-    tokenizer = DistilBertTokenizerFast.from_pretrained(model_path)
-    model = DistilBertForSequenceClassification.from_pretrained(model_path)
-    model.eval()
+def load_labeled(path: str) -> pd.DataFrame:
+    df = pd.read_csv(path, dtype=str)
+    label_col = "Label" if "Label" in df.columns else "label"
+    df = df[df[label_col].isin(["0", "1"])].reset_index(drop=True)
+    df["is_survey"] = (df[label_col] == "0").astype(int)  # label 0 = survey
+    return df
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
 
-    tokens = tokenizer(texts, padding=True, truncation=True, max_length=512, return_tensors='pt').to(device)
+def evaluate(path: str, model_path: str, mode: str):
+    df = load_labeled(path)
+    frame = prepare_frame(df)
+    is_survey, scores = classify_frame(frame, model_path=model_path, mode=mode)
+    y = df["is_survey"].values
 
-    with torch.no_grad():
-        outputs = model(**tokens)
-        logits = outputs.logits
-        probs = torch.nn.functional.softmax(logits, dim=-1)
-        survey_probs = probs[:, 0].cpu().numpy()
-
-    model_preds = [0 if prob > threshold else 1 for prob in survey_probs]
-    keyword_preds = [0 if keyword_is_survey(t) else None for t in texts]
-
-    final_preds = [
-        kp if kp is not None else mp
-        for kp, mp in zip(keyword_preds, model_preds)
-    ]
-    return final_preds
-
-def calculate_and_print_metrics(df, label_col='label', pred_col='Prediction', model_name=''):
-    y_true = df[label_col].astype(int).values
-    y_pred = df[pred_col].values
-
-    acc = accuracy_score(y_true, y_pred)
-    prec = precision_score(y_true, y_pred)
-    rec = recall_score(y_true, y_pred)
-    f1 = f1_score(y_true, y_pred)
-
-    print(f"\n📊 Evaluation: {model_name}")
-    print(f"Accuracy : {acc:.2f}")
-    print(f"Precision: {prec:.2f}")
-    print(f"Recall   : {rec:.2f}")
-    print(f"F1 Score : {f1:.2f}")
+    print(f"\n📊 Evaluation: {mode} ({len(df)} labeled papers from '{path}')")
+    print(f"Accuracy : {accuracy_score(y, is_survey):.3f}")
+    print(f"Precision: {precision_score(y, is_survey, zero_division=0):.3f}")
+    print(f"Recall   : {recall_score(y, is_survey, zero_division=0):.3f}")
+    print(f"F1 Score : {f1_score(y, is_survey, zero_division=0):.3f}")
     print("\nClassification Report:")
-    print(classification_report(y_true, y_pred, target_names=["survey", "not survey"]))
+    print(classification_report(y, is_survey, labels=[1, 0], target_names=["survey", "not survey"], zero_division=0))
+    return df, y, np.asarray(is_survey), np.asarray(scores)
+
 
 if __name__ == "__main__":
-    input_csv = 'paper1.csv'
-    distilbert_path = './distilbert_survey_model'
-
-    df = pd.read_csv(input_csv)
-    df.columns = df.columns.str.strip().str.lower()
-    required_cols = ['title', 'abstract', 'label']
-    if not all(col in df.columns for col in required_cols):
-        raise ValueError(f"Input CSV must contain columns: {required_cols}")
-
-    texts = load_data(df)
-
-    # DistilBERT + Keyword
-    distilbert_preds = classify_with_hybrid_model(
-        texts, distilbert_path
-    )
-    df['Prediction'] = distilbert_preds
-
-    # Print Results
-    calculate_and_print_metrics(df, pred_col='Prediction', model_name='DistilBERT + Keyword')
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input", default=os.path.join(ROOT, "data", "eval_to_label.csv"))
+    parser.add_argument("--model", default=os.path.join(ROOT, "distilbert_survey_model"))
+    parser.add_argument("--mode", default="learned", choices=MODES)
+    args = parser.parse_args()
+    evaluate(args.input, args.model, args.mode)
