@@ -288,7 +288,7 @@ def run_evaluation(
     sections = []
 
     def baseline_for(frame):
-        if not baseline_model:
+        if not baseline_model or not os.path.isdir(baseline_model):
             return None
         return (f"Baseline: {os.path.basename(os.path.normpath(baseline_model))} (OR, th=0.8)",
                 survey_proba_for(frame, baseline_model), 0.8)

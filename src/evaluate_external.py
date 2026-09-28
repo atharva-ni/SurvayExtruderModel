@@ -71,7 +71,7 @@ def run(test_csv: str, model_path: str, baseline_model: str, report_dir: str) ->
     svm = LinearSVC(C=1.0).fit(X_train, (train_df["Label"] == 0).astype(int))
 
     def baseline_for(frame):
-        if not baseline_model:
+        if not baseline_model or not os.path.isdir(baseline_model):
             return None
         return (f"Earlier model: {os.path.basename(os.path.normpath(baseline_model))} (OR, th=0.8)",
                 survey_proba_for(frame, baseline_model), 0.8)

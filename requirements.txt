@@ -16,6 +16,7 @@ tabulate==0.10.0
 tqdm==4.68.2
 matplotlib==3.10.9
 pytest==9.0.2
+kagglehub==1.0.2  # downloads the arXiv snapshot for the unseen-venue test (src/build_kaggle_test.py)
 
 # Optional: hyperparameter search (python main.py train --tune); not pinned because untested here
 # optuna

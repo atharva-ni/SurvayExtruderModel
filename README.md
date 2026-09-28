@@ -1,209 +1,102 @@
-# Academic Paper Classifier & Author Metrics Pipeline
+# Survey Excluder: model and evaluation
 
-A comprehensive machine learning pipeline designed to automatically classify scientific literature (distinguishing between **Survey/Review papers** and **Original Research papers**) and compute academic metrics (such as **h-index** and **i10-index**) using hybrid ML classification and keyword-matching logic.
+Code and data for the paper *A Semantic Classification Framework for Identifying Survey Papers and
+Mitigating Citation Inflation* (A. Nighot, N. Afraz). Survey Excluder detects survey and review papers
+in a publication list from bibliographic metadata alone, and recalculates the h-index, i10-index and
+citation count without them. A web interface is in the companion repository
+[SurvayExtruderUI](https://github.com/atharva-ni/SurvayExtruderUI).
 
----
+## How it works
 
-## 🚀 Key Features
+1. A fine-tuned **DistilBERT** model estimates, from title and abstract, how likely a paper is a survey.
+2. A **learned hybrid** (logistic regression) combines that score with title keywords, survey or research
+   phrasing in the abstract, a missing-abstract flag and the reference count.
+3. **Decision rules** place each paper in one category:
 
-* **Data Extraction**: Seamlessly fetch publication data for any author from the **Semantic Scholar API**.
-* **Real Training Data**: Builds a labeled dataset from real publications via **OpenAlex** (survey-only journals vs. topic- and year-matched research journals).
-* **Hybrid Classification**: A fine-tuned **DistilBERT** classifier combined with keyword heuristics — either the paper's OR rule or a **learned hybrid** (logistic regression over the DistilBERT score, title keywords, survey/research phrasing and reference count).
-* **Honest Evaluation**: Held-out test split plus a hand-labeled set of real author-profile papers; regenerates Table II and Table IV.
-* **Hyperparameter Tuning**: Automated optimization using **Optuna** for DistilBERT hyperparameter search.
-* **Academic Metric Analytics**: Calculates key metrics like **h-index** and **i10-index** on the filtered set of original research papers.
-* **CUDA Optimization**: GPU-accelerated training and inference with mixed precision.
-* **Unified CLI**: Run the entire pipeline through a single entrypoint script (`main.py`).
+| Category | Meaning | In the adjusted metrics |
+|---|---|---|
+| `survey` | Survey, tutorial or review | Removed |
+| `magazine-overview` | Magazine article flagged by the model that does not present itself as a survey | Kept (optionally removed) |
+| `non-paper` | Book, editorial, erratum (from publication type or title) | Kept, never counted as a survey |
+| `research` | Original research | Kept |
 
----
+Papers with only a title count as surveys only if the title says so.
 
-## 📁 Repository Structure
+## Results
 
-```text
-├── data/                      # Directory for data (ignored by git, kept via .gitkeep)
-│   └── proauthor/             # Subfolder for raw author files
-├── src/                       # Main source code
-│   ├── extract_semantic.py    # Semantic Scholar API client to fetch author profile & papers
-│   ├── build_dataset.py       # Real training dataset builder (OpenAlex)
-│   ├── make_eval_set.py       # Samples author-profile papers for hand labeling
-│   ├── text_utils.py          # Shared text cleaning and keyword/cue patterns
-│   ├── inference.py           # Model loading and batched survey-probability inference
-│   ├── hybrid.py              # OR rule and learned hybrid combiner
-│   ├── train.py               # Fine-tuning, threshold selection, hybrid fitting, Optuna tuning
-│   ├── classifier.py          # Author-profile classification & metrics recalculation
-│   └── evaluate.py            # Regenerates Table II and Table IV
-├── reports/                   # Evaluation reports (evaluation.md / .json)
-├── visualization/             # Directory containing visualization scripts and plots
-├── .env                       # Local environment file (API keys, ignored by git)
-├── .env.example               # Template for environment configuration variables
-├── .gitignore                 # Standard git exclude file for model checkpoints & datasets
-├── main.py                    # Unified command-line interface entry point
-└── README.md                  # This documentation
-```
+| Test | Result | Report |
+|---|---|---|
+| Held-out test split (1,925 journal papers) | 95.4% accuracy, 95.3% F1 | `reports/evaluation.md` |
+| arXiv papers from 45 venues not used in training (970) | 91.8% F1 | `reports/external_evaluation.md` |
+| Author-profile papers, blind-labeled by an author (323) | 72% precision, 63% recall (default system) | `reports/evaluation.md` |
+| Google Scholar top-20 papers not seen in training (69) | 66 correct (96%) | `reports/author_verification.md` |
+| Five prolific survey authors vs. five comparison authors | surveys: 9.8% vs. 4.9% of papers, 28.7% vs. 15.9% of citations | `reports/cohort/evaluation.md` |
 
----
+The adjusted metrics are an additional view of a publication record, suited to aggregate or cohort-level
+analysis. At this accuracy they should not be used to judge an individual researcher.
 
-## 🛠️ Installation & Setup
-
-### 1. Prerequisites
-Ensure you have **Python 3.8+** installed. If using GPU acceleration, install a version of PyTorch compiled with CUDA.
+## Setup
 
 ```bash
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install -r requirements.txt     # tested with Python 3.14; install the CUDA build of PyTorch first for GPU use
+cp .env.example .env                # add an OpenAlex API key (free) and, optionally, a Semantic Scholar key
+python -m pytest tests              # unit tests (no model needed)
 ```
 
-### 2. Install Dependencies
-Install the pinned versions the results were produced with:
+The trained model (about 260 MB) is not stored in this repository. Train it with `python main.py train`;
+it is saved to `distilbert_survey_model/`.
+
+## Usage
 
 ```bash
-pip install -r requirements.txt
-```
-`optuna` is only needed for `train --tune` and is installed separately.
+# Fetch an author's publications (OpenAlex keeps one merged profile per author)
+python main.py extract --source openalex --name "Author Name" --output data/author.csv
 
-### 3. Environment Variables
-Copy the `.env.example` template to `.env` and fill in your Semantic Scholar API key and Author ID:
-
-```bash
-cp .env.example .env
+# Classify them and compare h-index, i10-index and citations with and without surveys
+python main.py classify --input data/author.csv
 ```
 
-Open `.env` and configure:
-```ini
-SEMANTIC_SCHOLAR_API_KEY=your_actual_api_key_here
-SEMANTIC_SCHOLAR_AUTHOR_ID=144019071
-```
+`classify` writes the research papers to `data/Non-Survey-Papers.csv` and the surveys and non-papers to
+`data/Survey-Papers.csv`. Each row gets `Category`, `SurveyScore` and `Prediction` (0 = survey, 1 = other).
+Options: `--mode learned|or|model|keyword` and `--exclude-magazine-overviews`.
 
----
+## Reproducing the paper
 
-## 📖 Command Line Usage
+| Paper | Command |
+|---|---|
+| Training data (Table II, Fig. 2) | `python main.py build-dataset` · `python visualization/Bargraphplot.py` |
+| Model | `python main.py train` (thresholds only: `python src/train.py --retune-thresholds`) |
+| Test split and author profiles (Tables III, V) | `python src/evaluate.py --baseline-model ./distilbert_survey_model_synthetic --authors "data/proauthor_s2/*.csv"` |
+| Unseen venues (Table IV) | `python src/build_kaggle_test.py` · `python src/evaluate_external.py` |
+| Cohorts (Tables VI, VII) | `python src/build_cohort.py` · `python src/evaluate.py --eval-set none --authors "data/cohort_openalex/survey/*.csv" --comparison-authors "data/cohort_openalex/comparison/*.csv" --report-dir reports/cohort` · `python src/check_cohort_authors.py` |
+| Google Scholar check | `python src/verify_authors.py` |
 
-Use the unified entrypoint `main.py` to run any step of the pipeline.
+The "earlier model" baseline (`distilbert_survey_model_synthetic`) is the previous, synthetic-data version of
+the classifier and is not distributed; without it, the evaluation scripts skip that row.
 
-### 📥 1. Extract Paper Data
-Fetch publications for an author from the Semantic Scholar API:
-```bash
-python main.py extract --author 144019071 --output data/nima.csv
-```
-Semantic Scholar often splits prolific authors across several IDs (e.g. D. Niyato: 1713586 and 2266084696). Pass them all to merge the profile; duplicate titles are merged. The verified IDs for the five authors in the paper are in `data/author_ids.json`, and their merged profiles in `data/proauthor_s2/`:
-```bash
-python main.py extract --author 1713586,2266084696,2340230621 --output data/proauthor_merged/niyato.csv
-```
-Or use **OpenAlex**, which keeps one merged profile per author (set `OPENALEX_API_KEY` in `.env` — free at openalex.org — for large profiles):
-```bash
-python main.py extract --source openalex --name "Dusit Niyato" --output data/proauthor_openalex/niyato.csv
-```
-Both record each paper's publication type, used to recognise books and editorials. To add types to an older Semantic Scholar CSV:
-```bash
-python main.py extract --add-types data/proauthor/auth1.csv
-```
-No single source is complete for prolific authors, so combine them (one row per title, highest citation count, all publication types):
-```bash
-python src/combine_profiles.py semantic=data/proauthor/auth1.csv openalex=data/proauthor_openalex/hanzo.csv --output data/proauthor_combined/hanzo.csv
-```
-Check profiles and classifications against Google Scholar (metrics and top-20 papers in `data/scholar_reference.json`); writes `reports/author_verification.md`:
-```bash
-python src/verify_authors.py
-```
-
----
-
-### 🧱 Build a Real Training Dataset
-Build a labeled dataset from real publications via **OpenAlex** (no API key needed):
-```bash
-python main.py build-dataset --output data/real_dataset.csv
-```
-Surveys come from survey-only journals (IEEE COMST, ACM CSUR, AI Review, Computer Science Review). Non-surveys come from research journals in the same topic group (e.g. JSAC, TWC, TPAMI, TSE), sampled to match the surveys' year distribution. Research-venue papers that look like surveys are written to `data/hard_cases_to_label.csv` instead of being used for training.
-
-Then sample papers from real author profiles for a hand-labeled test set (training papers are excluded):
-```bash
-python main.py make-eval-set --input "data/proauthor/*.csv"
-```
-Fill the `Label` column of `data/eval_to_label.csv` (0 = survey, 1 = research, `skip` = non-paper).
-
----
-
-### 🏋️ 2. Train or Tune the Classifier
-
-#### Train DistilBERT:
-```bash
-python main.py train --dataset data/real_dataset.csv --epochs 3
-```
-The dataset is split 80/20 into train/test (stratified), and 10% of the training part is held out for validation. Training saves to `./distilbert_survey_model/`:
-* the fine-tuned model and tokenizer,
-* `survey_config.json` — the decision threshold chosen on the validation split,
-* `hybrid_combiner.joblib` — the learned hybrid, fitted on the validation split,
-* `data_split.csv` — the exact split, reused by `evaluate`.
-
-The test split is never used for training, early stopping, threshold selection or tuning.
-
-#### Hyperparameter tuning using Optuna:
-```bash
-python main.py train --dataset data/real_dataset.csv --tune --trials 5
-```
-Tuning uses the train/validation splits only.
-
----
-
-### ⚡ 3. Classify and Calculate Metrics
-Filter out survey papers and calculate academic indices (h-index & i10-index) before and after filtering:
-```bash
-python main.py classify --input data/nima.csv
-```
-This classifies each paper, writes original research papers to `data/Non-Survey-Papers.csv`, writes surveys and non-papers (editorials, errata, ...) to `data/Survey-Papers.csv`, and prints a comparison table showing the change in indices. Only surveys are removed from the metrics: non-papers count in both the original and the filtered values, so the difference comes from the surveys alone. `Prediction` is 0 for a survey and 1 otherwise.
-
-Choose the classifier with `--mode`: `learned` (default), `or` (the paper's DistilBERT OR keyword rule), `model` (DistilBERT only) or `keyword` (title keywords only).
-
-Each paper gets a `Category`:
-* `survey` — excluded;
-* `non-paper` — books, editorials, errata (from the publication type or title) — never counted as surveys; kept in the metrics but left out of the research-only file;
-* `magazine-overview` — a magazine article (e.g. IEEE Communications Magazine, IEEE Network) that the classifier flagged but that does not present itself as a survey (no survey term in the title, no survey phrasing in the abstract, not typed "Review"). Kept by default; add `--exclude-magazine-overviews` to exclude these too;
-* `research` — kept.
-
----
-
-### 📊 4. Evaluate
-Regenerate Table II (classification performance, survey = positive class) on the held-out test split and the hand-labeled set, and Table IV (author impact):
-```bash
-python main.py evaluate --baseline-model ./distilbert_survey_model_synthetic
-```
-External test on unseen venues: text from the Kaggle arXiv snapshot (`Cornell-University/arxiv`, downloaded with `kagglehub`, no Kaggle account needed), labels from where each paper was published (Foundations and Trends, Annual Reviews, ... vs. JMLR, IEEE TIT, ...; none used in training). Writes `data/kaggle_arxiv_test.csv` and `reports/external_evaluation.md`:
-```bash
-python src/build_kaggle_test.py
-python src/evaluate_external.py
-```
-
-Results are written to `reports/evaluation.md` and `reports/evaluation.json`. Table IV reports the main result (surveys excluded) and a sensitivity column that also excludes magazine overviews. Use `--authors "data/proauthor_merged/*.csv"` to run it on other profiles.
-
-To see all option flags:
-```bash
-python main.py --help
-```
-
----
-
-## 🗂️ Data in this repository
+## Data in this repository
 
 | File | Contents |
 |---|---|
-| `data/real_dataset.csv` | Training data: 9,624 papers (4,812 surveys / 4,812 research) from OpenAlex, labeled by venue |
-| `data/real_dataset_split.csv` | Train / validation / test assignment of each paper (by `OpenAlexId`) used for the reported results |
-| `data/eval_to_label.csv` | 328 author-profile papers with survey/research labels (`LabeledBy` says who labeled them) |
-| `data/hard_cases_to_label.csv` | Survey-like papers from research journals, excluded from training (unlabeled) |
-| `data/proauthor/*.csv` | Original Semantic Scholar profiles of the five authors (source of the evaluation set) |
-| `data/proauthor_s2/*.csv` | Semantic Scholar profiles with merged author IDs (`data/author_ids.json`), used for Table IV |
-| `data/scholar_reference.json` | Google Scholar metrics and top-20 papers per author, with reference labels |
+| `data/real_dataset.csv`, `data/real_dataset_split.csv` | Training data (9,624 papers from 23 journals, labeled by venue) and the train/validation/test split |
+| `data/hard_cases_to_label.csv` | Survey-like papers from research journals, set aside from training |
+| `data/eval_to_label.csv` | 328 author-profile papers: the author's blind labels (`Label`), the LLM labels (`LabelClaude`) and the sampling strata and weights |
+| `data/proauthor/`, `data/proauthor_s2/`, `data/author_ids.json` | Semantic Scholar profiles of the five survey authors (the second with merged author IDs) |
+| `data/kaggle_arxiv_test.csv`, `data/kaggle_arxiv_errors_to_review.csv` | Unseen-venue test set and its misclassified papers |
+| `data/cohort_openalex/`, `data/cohort_openalex.json` | OpenAlex profiles of both cohorts (retrieved 28 September 2026), author IDs and the selection record |
+| `data/scholar_reference.json` | Google Scholar metrics and top-20 papers per survey author |
 
-Metadata comes from [OpenAlex](https://openalex.org) (CC0) and the [Semantic Scholar API](https://www.semanticscholar.org/product/api). Abstracts remain the property of their publishers; they are included for research reproducibility.
+Metadata comes from [OpenAlex](https://openalex.org) (CC0), the [Semantic Scholar API](https://www.semanticscholar.org/product/api)
+and the arXiv metadata snapshot on [Kaggle](https://www.kaggle.com/datasets/Cornell-University/arxiv) (CC0).
+Abstracts remain the property of their publishers; they are included for reproducibility.
 
----
+## Repository layout
 
-## 🧪 Tests
-Unit tests cover text cleaning, the categorization rules and the metric calculations (no model needed):
-```bash
-python -m pytest tests
+```text
+main.py            command-line entry point (extract, build-dataset, train, classify, evaluate)
+src/               classifier, training, dataset builders and evaluation scripts
+tests/             unit tests
+data/              datasets behind the reported results
+reports/           generated evaluation reports
+visualization/     plotting scripts and the training-data figure
 ```
-
----
-
-## 🔒 Security Note
-Never commit the `.env` file containing your API keys or any generated `.csv` files inside the `data/` folder to GitHub. The `.gitignore` file has been preconfigured to exclude them.
