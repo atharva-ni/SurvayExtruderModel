@@ -91,6 +91,16 @@ def sampling_design(ev_all: pd.DataFrame, ev: pd.DataFrame) -> list:
     return rows
 
 
+def label_agreement(ev_all: pd.DataFrame) -> dict:
+    """Agreement and Cohen's kappa between the blind human labels and the LLM labels (survey vs. research)."""
+    both = ev_all[ev_all["LabelClaude"].isin(["0", "1"]) & ev_all["LabelHumanBlind"].isin(["0", "1"])]
+    agree = float((both["LabelClaude"] == both["LabelHumanBlind"]).mean())
+    p1, p2 = (both["LabelClaude"] == "0").mean(), (both["LabelHumanBlind"] == "0").mean()
+    expected = p1 * p2 + (1 - p1) * (1 - p2)
+    return {"n": len(both), "agreement": agree, "kappa": float((agree - expected) / (1 - expected)),
+            "disagreements": int((both["LabelClaude"] != both["LabelHumanBlind"]).sum())}
+
+
 def sampling_table(rows: list) -> str:
     total_w = sum(r["weight"] * r["labeled"] for r in rows)
     body = [[r["stratum"], r["definition"], r["pool"], r["sampled"], r["labeled"], r["surveys"], r["weight"],
@@ -332,6 +342,13 @@ def run_evaluation(
             if w is not None:
                 sections.append(("Sampling design of the hand-labeled set",
                                  sampling_table(results["hand_labeled_sampling"])))
+            if {"LabelClaude", "LabelHumanBlind"} <= set(ev_all.columns):
+                results["label_agreement"] = label_agreement(ev_all)
+                a = results["label_agreement"]
+                sections.append(("Label agreement: first author (blind) vs. LLM", (
+                    f"{a['n']} papers labeled survey or research by both: agreement {100 * a['agreement']:.1f}%, "
+                    f"Cohen's kappa {a['kappa']:.2f}; {a['disagreements']} disagreements (the first author's label "
+                    f"is used). The remaining papers carry the LLM label, verified by the first author.")))
 
     # ---- Table IV ----
     if authors_glob and glob.glob(authors_glob):
