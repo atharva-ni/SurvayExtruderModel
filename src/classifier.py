@@ -1,8 +1,9 @@
 """
 Survey/Non-Research Paper Classifier
 ====================================
-Classifies an author's publications, excludes surveys and non-papers
-(editorials, errata, ...), and recalculates h-index, i10-index and citations.
+Classifies an author's publications, excludes surveys, and recalculates
+h-index, i10-index and citations. Non-papers (editorials, errata, ...) stay in
+both the original and the filtered metrics.
 
 Modes:
   * learned - learned hybrid combiner (default)
@@ -186,50 +187,56 @@ def exclude_predicted_surveys(
                                       batch_size=batch_size, show_progress=True)
     df["Category"] = categorize(frame, is_survey)
     df["SurveyScore"] = np.round(score, 4)
-    excluded_categories = {"non-paper", "survey"} | ({"magazine-overview"} if exclude_magazine_overviews else set())
-    df["Prediction"] = (~df["Category"].isin(excluded_categories)).astype(int)  # 0 = excluded, 1 = kept
+    excluded_categories = {"survey"} | ({"magazine-overview"} if exclude_magazine_overviews else set())
+    df["Prediction"] = (~df["Category"].isin(excluded_categories)).astype(int)  # 0 = survey, 1 = non-survey
 
+    # Only surveys are removed from the metrics; non-papers stay in both profiles
     excluded_df = df[df["Prediction"] == 0]
-    research_df = df[df["Prediction"] == 1]
+    filtered_df = df[df["Prediction"] == 1]
+    research_df = filtered_df[filtered_df["Category"] != "non-paper"]
+    other_df = df[~df.index.isin(research_df.index)]
 
     os.makedirs(os.path.dirname(os.path.abspath(output_csv)), exist_ok=True)
     os.makedirs(os.path.dirname(os.path.abspath(survey_csv)), exist_ok=True)
     research_df.to_csv(output_csv, index=False)
-    excluded_df.to_csv(survey_csv, index=False)
+    other_df.to_csv(survey_csv, index=False)
 
     # Statistics
     total_papers, total_citations = len(df), int(df["citationCount"].sum())
     excluded_citations = int(excluded_df["citationCount"].sum())
     total_h, total_i10 = calculate_indices(df)
-    research_h, research_i10 = calculate_indices(research_df)
+    filtered_h, filtered_i10 = calculate_indices(filtered_df)
     counts = df["Category"].value_counts()
     n_surveys, n_non_papers = int(counts.get("survey", 0)), int(counts.get("non-paper", 0))
     n_magazine = int(counts.get("magazine-overview", 0))
 
     print(f"\n📊 Papers excluded: {len(excluded_df)} ({100 * len(excluded_df) / max(1, total_papers):.2f}%)"
-          f" — {n_surveys} surveys, {n_non_papers} books/editorials/other non-papers"
+          f" — {n_surveys} surveys"
           + (f", {n_magazine} magazine overviews" if exclude_magazine_overviews else ""))
     if not exclude_magazine_overviews and n_magazine:
         print(f"ℹ️  {n_magazine} magazine articles without explicit survey framing were kept "
               f"(use --exclude-magazine-overviews to drop them)")
+    if n_non_papers:
+        print(f"ℹ️  {n_non_papers} books/editorials/other non-papers are kept in both metrics "
+              f"but left out of the research-only file")
     print(f"📉 Citations excluded: {excluded_citations} ({100 * excluded_citations / max(1, total_citations):.2f}%)")
 
     comparison = [
-        ["Total Papers", total_papers, len(research_df)],
+        ["Total Papers", total_papers, len(filtered_df)],
         ["Total Citations", total_citations, total_citations - excluded_citations],
-        ["H-Index", total_h, research_h],
-        ["i10-Index", total_i10, research_i10],
+        ["H-Index", total_h, filtered_h],
+        ["i10-Index", total_i10, filtered_i10],
     ]
     print("\n📋 Comparison Table:")
-    print(tabulate(comparison, headers=["Metric", "All Papers", "Research Only"], tablefmt="grid"))
+    print(tabulate(comparison, headers=["Metric", "All Papers", "Without Surveys"], tablefmt="grid"))
     print(f"\n✅ Research papers saved to: '{output_csv}'")
-    print(f"✅ Excluded papers (surveys/non-papers) saved to: '{survey_csv}'")
+    print(f"✅ Surveys and non-papers saved to: '{survey_csv}'")
 
     return {
         "papers": total_papers, "excluded": len(excluded_df), "surveys": n_surveys,
         "non_papers": n_non_papers, "magazine_overviews": n_magazine,
         "citations": total_citations, "excluded_citations": excluded_citations,
-        "h_before": total_h, "h_after": research_h, "i10_before": total_i10, "i10_after": research_i10,
+        "h_before": total_h, "h_after": filtered_h, "i10_before": total_i10, "i10_after": filtered_i10,
     }
 
 

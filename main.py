@@ -54,7 +54,7 @@ Examples:
     parser_classify = subparsers.add_parser("classify", help="Filter out survey papers and calculate academic indices")
     parser_classify.add_argument("--input", type=str, required=True, help="Input CSV file of publications (from the extract command)")
     parser_classify.add_argument("--output", type=str, help="Output CSV for original research papers (default: data/Non-Survey-Papers.csv)")
-    parser_classify.add_argument("--surveys", type=str, help="Output CSV for excluded survey papers (default: data/Survey-Papers.csv)")
+    parser_classify.add_argument("--surveys", type=str, help="Output CSV for surveys and non-papers (default: data/Survey-Papers.csv)")
     parser_classify.add_argument("--model", type=str, default="./distilbert_survey_model", help="Path to fine-tuned model (default: ./distilbert_survey_model)")
     parser_classify.add_argument("--batch-size", type=int, default=32, help="Batch size for model inference (default: 32)")
     parser_classify.add_argument("--threshold", type=float, default=None, help="DistilBERT survey-probability threshold (default: tuned value saved with the model)")

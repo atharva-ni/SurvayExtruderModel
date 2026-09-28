@@ -1,0 +1,67 @@
+# External evaluation on Kaggle arXiv papers from unseen venues (2026-09-28)
+
+Test set: `data/kaggle_arxiv_test.csv` — text (title, abstract) from the Kaggle arXiv snapshot, labels from the venue where each paper was published; none of the venues is used in training. Model: `./distilbert_survey_model`. CIs: 2000 bootstrap resamples. 'Prec. at 7.3% surveys' is the precision expected when surveys are as rare as in real author profiles.
+
+## Test set — title + abstract (n = 970, 485 surveys)
+
+| Method                                                        | Acc.   | Prec.   | Recall   | F1    | F1 95% CI   | ΔF1 vs DistilBERT (95% CI)   | Prec. at 7.3% surveys   |
+|---------------------------------------------------------------|--------|---------|----------|-------|-------------|------------------------------|-------------------------|
+| Keyword only (title)                                          | 61.5%  | 100.0%  | 23.1%    | 37.5% | 32.7%–42.6% | -54.6 (-59.4 to -49.5)       | 100.0%                  |
+| TF-IDF + SVM                                                  | 88.7%  | 98.2%   | 78.8%    | 87.4% | 85.0%–89.6% | -4.6 (-6.7 to -2.7)          | 81.1%                   |
+| DistilBERT only                                               | 92.4%  | 96.4%   | 88.0%    | 92.0% | 90.2%–93.8% |                              | 67.8%                   |
+| Hybrid (OR, paper)                                            | 92.5%  | 96.4%   | 88.2%    | 92.1% | 90.4%–93.9% | +0.1 (+0.0 to +0.4)          | 67.8%                   |
+| Learned hybrid (title+abstract)                               | 91.9%  | 97.2%   | 86.2%    | 91.4% | 89.5%–93.2% | -0.7 (-1.6 to +0.2)          | 73.3%                   |
+| Learned hybrid (+ reference count)                            | 92.2%  | 96.6%   | 87.4%    | 91.8% | 89.9%–93.5% | -0.3 (-1.2 to +0.6)          | 69.0%                   |
+| Earlier model: distilbert_survey_model_synthetic (OR, th=0.8) | 69.3%  | 87.0%   | 45.4%    | 59.6% | 55.4%–63.6% | -32.4 (-36.6 to -28.1)       | 34.4%                   |
+
+## Recall on surveys per venue (title + abstract)
+
+| Venue                                                           |   Surveys | DistilBERT only   | Hybrid (OR, paper)   | Learned hybrid (title+abstract)   | Learned hybrid (+ reference count)   |
+|-----------------------------------------------------------------|-----------|-------------------|----------------------|-----------------------------------|--------------------------------------|
+| Annual Reviews in Control                                       |        84 | 76.2%             | 76.2%                | 75.0%                             | 76.2%                                |
+| Annual Review of Statistics and Its Application                 |        57 | 89.5%             | 89.5%                | 87.7%                             | 89.5%                                |
+| Foundations and Trends in Machine Learning                      |        49 | 91.8%             | 91.8%                | 87.8%                             | 89.8%                                |
+| Archives of Computational Methods in Engineering                |        47 | 85.1%             | 85.1%                | 83.0%                             | 83.0%                                |
+| WIREs Data Mining and Knowledge Discovery                       |        47 | 87.2%             | 87.2%                | 87.2%                             | 87.2%                                |
+| Annual Review of Control, Robotics, and Autonomous Systems      |        30 | 90.0%             | 90.0%                | 93.3%                             | 93.3%                                |
+| Statistics Surveys                                              |        26 | 80.8%             | 84.6%                | 80.8%                             | 84.6%                                |
+| IEEE Reviews in Biomedical Engineering                          |        24 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
+| Foundations and Trends in Signal Processing                     |        16 | 81.2%             | 81.2%                | 81.2%                             | 81.2%                                |
+| Foundations and Trends in Computer Graphics and Vision          |        15 | 93.3%             | 93.3%                | 93.3%                             | 93.3%                                |
+| Foundations and Trends in Communications and Information Theory |        14 | 92.9%             | 92.9%                | 85.7%                             | 92.9%                                |
+| Annual Review of Biomedical Data Science                        |        12 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
+| Foundations and Trends in Information Retrieval                 |        11 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
+| Foundations and Trends in Optimization                          |        11 | 81.8%             | 81.8%                | 72.7%                             | 72.7%                                |
+| Foundations and Trends in Robotics                              |        10 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
+| Foundations and Trends in Theoretical Computer Science          |         8 | 100.0%            | 100.0%               | 75.0%                             | 87.5%                                |
+| Foundations and Trends in Databases                             |         4 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
+| Foundations and Trends in Networking                            |         4 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
+| Foundations and Trends in Privacy and Security                  |         4 | 100.0%            | 100.0%               | 75.0%                             | 75.0%                                |
+| Foundations and Trends in Programming Languages                 |         4 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
+| Foundations and Trends in Systems and Control                   |         3 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
+| Foundations and Trends in Human-Computer Interaction            |         2 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
+| Foundations and Trends in Web Science                           |         2 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
+| Foundations and Trends in Electric Energy Systems               |         1 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
+
+## F1 per topic group (title + abstract)
+
+| Group   |   Papers | DistilBERT only   | Hybrid (OR, paper)   | Learned hybrid (title+abstract)   | Learned hybrid (+ reference count)   |
+|---------|----------|-------------------|----------------------|-----------------------------------|--------------------------------------|
+| biomed  |       72 | 97.3%             | 97.3%                | 100.0%                            | 100.0%                               |
+| comm    |       78 | 92.1%             | 92.1%                | 89.2%                             | 90.7%                                |
+| control |      254 | 89.3%             | 89.3%                | 89.3%                             | 89.7%                                |
+| ml      |      376 | 92.8%             | 92.8%                | 91.9%                             | 91.7%                                |
+| stats   |      166 | 90.6%             | 91.2%                | 90.4%                             | 91.2%                                |
+| theory  |       24 | 100.0%            | 100.0%               | 90.9%                             | 95.7%                                |
+
+## Test set — title only (n = 970, 485 surveys)
+
+| Method                                                        | Acc.   | Prec.   | Recall   | F1    | F1 95% CI   | ΔF1 vs DistilBERT (95% CI)   | Prec. at 7.3% surveys   |
+|---------------------------------------------------------------|--------|---------|----------|-------|-------------|------------------------------|-------------------------|
+| Keyword only (title)                                          | 61.5%  | 100.0%  | 23.1%    | 37.5% | 32.7%–42.6% | -40.1 (-44.9 to -35.1)       | 100.0%                  |
+| TF-IDF + SVM                                                  | 71.6%  | 83.4%   | 54.0%    | 65.6% | 61.7%–69.3% | -11.9 (-15.3 to -8.4)        | 28.4%                   |
+| DistilBERT only                                               | 80.3%  | 90.2%   | 68.0%    | 77.6% | 74.4%–80.5% |                              | 41.9%                   |
+| Hybrid (OR, paper)                                            | 80.3%  | 90.2%   | 68.0%    | 77.6% | 74.4%–80.5% | +0.0 (+0.0 to +0.0)          | 41.9%                   |
+| Learned hybrid (title+abstract)                               | 80.0%  | 91.2%   | 66.4%    | 76.8% | 73.6%–79.8% | -0.7 (-1.7 to +0.2)          | 45.0%                   |
+| Learned hybrid (+ reference count)                            | 80.9%  | 89.9%   | 69.7%    | 78.5% | 75.3%–81.4% | +1.0 (-0.4 to +2.4)          | 41.2%                   |
+| Earlier model: distilbert_survey_model_synthetic (OR, th=0.8) | 65.5%  | 95.7%   | 32.4%    | 48.4% | 43.4%–53.3% | -29.2 (-33.8 to -24.6)       | 63.8%                   |

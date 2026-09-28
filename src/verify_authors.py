@@ -7,7 +7,8 @@ For each author in data/scholar_reference.json:
      Scholar top-20 items the profile contains.
   2. Classification check: the category the classifier assigns to each of the
      Scholar top-20 items found, against a reference label
-     (S survey, M magazine overview, R research, B book).
+     (S survey, M magazine overview, R research, B book). Items in the
+     training set are marked and reported separately.
 """
 
 import os
@@ -39,11 +40,20 @@ def find(profile: pd.DataFrame, title: str):
     return None if hit.empty else hit.sort_values("citationCount", ascending=False).iloc[0]
 
 
-def verify(reference_path: str, profiles: dict, model_path: str, report_path: str) -> None:
+def verify(reference_path: str, profiles: dict, model_path: str, report_path: str,
+           training_csv: str = "data/real_dataset.csv") -> None:
     with open(reference_path, encoding="utf-8") as f:
         reference = json.load(f)
 
+    # Scholar items the model was trained on are reported but not counted as unseen
+    train_keys = set()
+    if os.path.exists(training_csv):
+        train_keys = set(pd.read_csv(training_csv, usecols=["Title"])["Title"].map(norm_title))
+    else:
+        print(f"⚠️  Training set '{training_csv}' not found; overlap with training data NOT marked")
+
     coverage_rows, check_rows, details = [], [], []
+    all_correct = all_total = unseen_correct = unseen_total = 0
     for author, paths in profiles.items():
         ref = reference[author]
         coverage_rows.append([author, "Google Scholar", "", f"{ref['citations']:,}", ref["h"], ref["i10"], "20/20"])
@@ -73,28 +83,40 @@ def verify(reference_path: str, profiles: dict, model_path: str, report_path: st
         is_survey, _ = classify_frame(frame, model_path=model_path)
         df["Category"] = categorize(frame, is_survey)
 
-        correct = total = 0
+        correct = total = u_correct = u_total = 0
         for title, truth in ref["top20"]:
+            in_training = norm_title(title) in train_keys
             row = find(df, title)
             if row is None:
-                details.append([author, truth, "not in profile", "", title[:70]])
+                details.append([author, truth, "not in profile", "", "yes" if in_training else "", title[:70]])
                 continue
             ok = row["Category"] in EXPECTED[truth]
             correct += ok
             total += 1
-            details.append([author, truth, row["Category"], "✓" if ok else "✗", title[:70]])
-        check_rows.append([author, best_source, f"{correct}/{total}"])
+            if not in_training:
+                u_correct += ok
+                u_total += 1
+            details.append([author, truth, row["Category"], "✓" if ok else "✗", "yes" if in_training else "",
+                            title[:70]])
+        check_rows.append([author, best_source, f"{correct}/{total}", f"{u_correct}/{u_total}"])
+        all_correct, all_total = all_correct + correct, all_total + total
+        unseen_correct, unseen_total = unseen_correct + u_correct, unseen_total + u_total
+
+    pct = lambda c, t: f"{c}/{t} ({100 * c / max(1, t):.0f}%)"
+    check_rows.append(["Total", "", pct(all_correct, all_total), pct(unseen_correct, unseen_total)])
 
     coverage = tabulate(coverage_rows, headers=["Author", "Source", "Papers", "Citations", "h", "i10", "Scholar top-20 found"],
                         tablefmt="github")
-    checks = tabulate(check_rows, headers=["Author", "Profile used", "Top-20 items classified correctly"], tablefmt="github")
-    detail = tabulate(details, headers=["Author", "Ref", "Classifier", "", "Title"], tablefmt="github")
+    checks = tabulate(check_rows, headers=["Author", "Profile used", "Correct (all found)", "Correct (not in training)"],
+                      tablefmt="github")
+    detail = tabulate(details, headers=["Author", "Ref", "Classifier", "", "In training", "Title"], tablefmt="github")
 
     md = ["# Author verification against Google Scholar", "",
           "Reference labels: S survey/tutorial/overview, M magazine overview (survey or magazine-overview accepted), "
           "R research (research or magazine-overview accepted), B book (must not be counted as a survey).", "",
-          "## Profile completeness", "", coverage, "", "## Classification of Scholar top-20 items", "", checks, "",
-          "## Details", "", detail, ""]
+          "## Profile completeness", "", coverage, "", "## Classification of Scholar top-20 items", "",
+          f"Items whose title is in the training set (`{training_csv}`) are counted only in the first column.", "",
+          checks, "", "## Details", "", detail, ""]
     os.makedirs(os.path.dirname(os.path.abspath(report_path)), exist_ok=True)
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("\n".join(md))
@@ -109,6 +131,7 @@ if __name__ == "__main__":
     parser.add_argument("--reference", default="data/scholar_reference.json")
     parser.add_argument("--model", default="./distilbert_survey_model")
     parser.add_argument("--report", default="reports/author_verification.md")
+    parser.add_argument("--training", default="data/real_dataset.csv", help="Training dataset (items in it are marked)")
     args = parser.parse_args()
 
     profiles = {
@@ -127,4 +150,4 @@ if __name__ == "__main__":
                     "OpenAlex": "data/proauthor_openalex/hossain.csv",
                     "Combined": "data/proauthor_combined/hossain.csv"},
     }
-    verify(args.reference, profiles, args.model, args.report)
+    verify(args.reference, profiles, args.model, args.report, args.training)

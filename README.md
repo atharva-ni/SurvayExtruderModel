@@ -149,13 +149,13 @@ Filter out survey papers and calculate academic indices (h-index & i10-index) be
 ```bash
 python main.py classify --input data/nima.csv
 ```
-This classifies each paper, writes original research papers to `data/Non-Survey-Papers.csv`, writes excluded surveys and non-papers (editorials, errata, ...) to `data/Survey-Papers.csv`, and prints a comparison table showing the change in indices.
+This classifies each paper, writes original research papers to `data/Non-Survey-Papers.csv`, writes surveys and non-papers (editorials, errata, ...) to `data/Survey-Papers.csv`, and prints a comparison table showing the change in indices. Only surveys are removed from the metrics: non-papers count in both the original and the filtered values, so the difference comes from the surveys alone. `Prediction` is 0 for a survey and 1 otherwise.
 
 Choose the classifier with `--mode`: `learned` (default), `or` (the paper's DistilBERT OR keyword rule), `model` (DistilBERT only) or `keyword` (title keywords only).
 
 Each paper gets a `Category`:
 * `survey` — excluded;
-* `non-paper` — books, editorials, errata (from the publication type or title) — excluded, and never counted as surveys;
+* `non-paper` — books, editorials, errata (from the publication type or title) — never counted as surveys; kept in the metrics but left out of the research-only file;
 * `magazine-overview` — a magazine article (e.g. IEEE Communications Magazine, IEEE Network) that the classifier flagged but that does not present itself as a survey (no survey term in the title, no survey phrasing in the abstract, not typed "Review"). Kept by default; add `--exclude-magazine-overviews` to exclude these too;
 * `research` — kept.
 
@@ -166,6 +166,12 @@ Regenerate Table II (classification performance, survey = positive class) on the
 ```bash
 python main.py evaluate --baseline-model ./distilbert_survey_model_synthetic
 ```
+External test on unseen venues: text from the Kaggle arXiv snapshot (`Cornell-University/arxiv`, downloaded with `kagglehub`, no Kaggle account needed), labels from where each paper was published (Foundations and Trends, Annual Reviews, ... vs. JMLR, IEEE TIT, ...; none used in training). Writes `data/kaggle_arxiv_test.csv` and `reports/external_evaluation.md`:
+```bash
+python src/build_kaggle_test.py
+python src/evaluate_external.py
+```
+
 Results are written to `reports/evaluation.md` and `reports/evaluation.json`. Table IV reports the main result (surveys excluded) and a sensitivity column that also excludes magazine overviews. Use `--authors "data/proauthor_merged/*.csv"` to run it on other profiles.
 
 To see all option flags:
