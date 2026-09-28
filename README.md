@@ -3,7 +3,8 @@
 Code and data for the paper *A Semantic Classification Framework for Identifying Survey Papers and
 Mitigating Citation Inflation* (A. Nighot, N. Afraz). Survey Excluder detects survey and review papers
 in a publication list from bibliographic metadata alone, and recalculates the h-index, i10-index and
-citation count without them.
+citation count without them. A web interface is in the companion repository
+[SurvayExtruderUI](https://github.com/atharva-ni/SurvayExtruderUI).
 
 ## How it works
 
