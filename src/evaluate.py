@@ -187,6 +187,8 @@ def author_impact(authors_glob: str, model_path: str) -> pd.DataFrame:
             "DistilBERT + rules": categorize(frame, bert) == "survey",
             "Learned hybrid (no rules)": hybrid == 1,
             "Learned hybrid + rules (main)": category == "survey",
+            "Learned hybrid + rules, magazine overviews also removed":
+                (category == "survey") | (category == "magazine-overview"),
             "Learned hybrid + rules, type hidden": categorize(frame.assign(Type=""), hybrid) == "survey",
             "Indexer type ('Review')": indexer_is_review(frame) == 1,
         }
@@ -321,6 +323,9 @@ def run_evaluation(
             w = ev["StratumWeight"].values if "StratumWeight" in ev.columns else None
             preds = all_methods(frame, survey_proba_for(frame, model_path), model_path, svm, vectorizer,
                                 baseline_for(frame))
+            if "LabelClaude" in ev.columns and ev["LabelClaude"].isin(["0", "1"]).all():
+                # Zero-shot LLM baseline: the LLM's labels scored against the author's labels
+                preds["LLM labels (Claude)"] = (ev["LabelClaude"] == "0").astype(int).values
             rows = {name: metrics(y, p, w) for name, p in preds.items()}
             if w is not None:
                 cis = stratified_bootstrap(y, preds, w, ev["Stratum"].values)

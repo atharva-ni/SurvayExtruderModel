@@ -416,6 +416,30 @@
           0.10578811471750253
         ],
         "f1_confident": 0.6174496644295302
+      },
+      "LLM labels (Claude)": {
+        "acc": 0.913312693498452,
+        "prec": 0.8547008547008547,
+        "rec": 0.9009009009009009,
+        "f1": 0.8771929824561403,
+        "acc_reweighted": 0.9642161467927189,
+        "prec_reweighted": 0.8041139657926749,
+        "rec_reweighted": 0.7319108348229769,
+        "survey_rate_true": 0.08016344522515692,
+        "survey_rate_pred": 0.07296539621618528,
+        "prec_rw_ci": [
+          0.665779377918483,
+          0.9156970795572931
+        ],
+        "rec_rw_ci": [
+          0.5626727310460499,
+          0.9335707423901934
+        ],
+        "rate_ci": [
+          0.058137800237297144,
+          0.10578811471750253
+        ],
+        "f1_confident": 0.9468085106382979
       }
     }
   },
@@ -624,6 +648,33 @@
         "excluded": 8.730964467005077,
         "citations": 30.1905840638235,
         "h_drop": 15
+      }
+    },
+    "Learned hybrid + rules, magazine overviews also removed": {
+      "han.csv": {
+        "excluded": 9.977827050997783,
+        "citations": 25.204687522248644,
+        "h_drop": 14
+      },
+      "hanzo.csv": {
+        "excluded": 7.490774907749078,
+        "citations": 34.77199063653552,
+        "h_drop": 26
+      },
+      "hossain.csv": {
+        "excluded": 18.281036834924965,
+        "citations": 40.93788974806685,
+        "h_drop": 29
+      },
+      "niyato.csv": {
+        "excluded": 16.626889419252187,
+        "citations": 41.90927223242972,
+        "h_drop": 32
+      },
+      "yu.csv": {
+        "excluded": 10.050761421319796,
+        "citations": 33.97271742342165,
+        "h_drop": 17
       }
     },
     "Learned hybrid + rules, type hidden": {

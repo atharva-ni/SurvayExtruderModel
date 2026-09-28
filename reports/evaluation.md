@@ -45,6 +45,7 @@ Learned hybrid coefficients: `{'bert_logit': 0.493, 'title_terms': 2.242, 'abstr
 | Indexer type ('Review')                                  | 84.5%  | 76.1%   | 80.2%    | 78.1% | 86.5%             | 60.9%        | 59.4%         | 7.8%           | 47–78%              | 44–80%               |
 | Learned hybrid + magazine rule (type hidden)             | 85.4%  | 78.1%   | 80.2%    | 79.1% | 87.2%             | 78.1%        | 59.4%         | 6.1%           | 71–85%              | 44–80%               |
 | Baseline: distilbert_survey_model_synthetic (OR, th=0.8) | 76.8%  | 82.1%   | 41.4%    | 55.1% | 61.7%             | 34.4%        | 30.7%         | 7.2%           | 23–58%              | 23–42%               |
+| LLM labels (Claude)                                      | 91.3%  | 85.5%   | 90.1%    | 87.7% | 94.7%             | 80.4%        | 73.2%         | 7.3%           | 67–92%              | 56–93%               |
 
 (rw) = reweighted by sampling stratum to the real mix of papers in the profiles; estimated true survey rate: 8.0% (95% CI 6–11%). CIs: 2000 bootstrap resamples within each stratum.
 
@@ -77,13 +78,14 @@ Books/editorials are not counted as surveys. '(+ magazine)' also excludes magazi
 
 ## Table IV(b) — survey authors, papers excluded by each method (averages over authors)
 
-| Method                              | Papers excluded   | Citations   |   Δh (avg) |   Δh han |   Δh hanzo |   Δh hossain |   Δh niyato |   Δh yu |
-|-------------------------------------|-------------------|-------------|------------|----------|------------|--------------|-------------|---------|
-| DistilBERT only (no rules)          | 18.7%             | 38.7%       |       26.2 |       16 |         32 |           32 |          34 |      17 |
-| DistilBERT + rules                  | 11.6%             | 32.5%       |       21.4 |       11 |         25 |           27 |          29 |      15 |
-| Learned hybrid (no rules)           | 17.6%             | 37.5%       |       25.4 |       15 |         30 |           32 |          33 |      17 |
-| Learned hybrid + rules (main)       | 11.0%             | 32.0%       |       21   |       11 |         23 |           27 |          29 |      15 |
-| Learned hybrid + rules, type hidden | 9.4%              | 27.7%       |       17.8 |       10 |         19 |           22 |          23 |      15 |
-| Indexer type ('Review')             | 10.0%             | 31.4%       |       21   |       10 |         27 |           25 |          27 |      16 |
+| Method                                                  | Papers excluded   | Citations   |   Δh (avg) |   Δh han |   Δh hanzo |   Δh hossain |   Δh niyato |   Δh yu |
+|---------------------------------------------------------|-------------------|-------------|------------|----------|------------|--------------|-------------|---------|
+| DistilBERT only (no rules)                              | 18.7%             | 38.7%       |       26.2 |       16 |         32 |           32 |          34 |      17 |
+| DistilBERT + rules                                      | 11.6%             | 32.5%       |       21.4 |       11 |         25 |           27 |          29 |      15 |
+| Learned hybrid (no rules)                               | 17.6%             | 37.5%       |       25.4 |       15 |         30 |           32 |          33 |      17 |
+| Learned hybrid + rules (main)                           | 11.0%             | 32.0%       |       21   |       11 |         23 |           27 |          29 |      15 |
+| Learned hybrid + rules, magazine overviews also removed | 12.5%             | 35.4%       |       23.6 |       14 |         26 |           29 |          32 |      17 |
+| Learned hybrid + rules, type hidden                     | 9.4%              | 27.7%       |       17.8 |       10 |         19 |           22 |          23 |      15 |
+| Indexer type ('Review')                                 | 10.0%             | 31.4%       |       21   |       10 |         27 |           25 |          27 |      16 |
 
 'Rules' = title-only, non-paper and magazine rules (Section III-A.4); 'no rules' excludes every paper the classifier flags.

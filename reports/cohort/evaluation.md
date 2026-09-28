@@ -43,14 +43,15 @@ Books/editorials are not counted as surveys. '(+ magazine)' also excludes magazi
 
 ## Table IV(b) — survey authors, papers excluded by each method (averages over authors)
 
-| Method                              | Papers excluded   | Citations   |   Δh (avg) |   Δh han |   Δh hanzo |   Δh hossain |   Δh niyato |   Δh yu |
-|-------------------------------------|-------------------|-------------|------------|----------|------------|--------------|-------------|---------|
-| DistilBERT only (no rules)          | 19.0%             | 38.9%       |       27.6 |       19 |         37 |           29 |          31 |      22 |
-| DistilBERT + rules                  | 10.8%             | 29.2%       |       18.8 |       14 |         21 |           19 |          22 |      18 |
-| Learned hybrid (no rules)           | 16.1%             | 36.6%       |       25   |       17 |         32 |           26 |          28 |      22 |
-| Learned hybrid + rules (main)       | 9.8%              | 28.7%       |       18.6 |       13 |         21 |           19 |          22 |      18 |
-| Learned hybrid + rules, type hidden | 12.8%             | 31.1%       |       20.4 |       14 |         24 |           22 |          23 |      19 |
-| Indexer type ('Review')             | 0.0%              | 0.0%        |        0.2 |        1 |          0 |            0 |           0 |       0 |
+| Method                                                  | Papers excluded   | Citations   |   Δh (avg) |   Δh han |   Δh hanzo |   Δh hossain |   Δh niyato |   Δh yu |
+|---------------------------------------------------------|-------------------|-------------|------------|----------|------------|--------------|-------------|---------|
+| DistilBERT only (no rules)                              | 19.0%             | 38.9%       |       27.6 |       19 |         37 |           29 |          31 |      22 |
+| DistilBERT + rules                                      | 10.8%             | 29.2%       |       18.8 |       14 |         21 |           19 |          22 |      18 |
+| Learned hybrid (no rules)                               | 16.1%             | 36.6%       |       25   |       17 |         32 |           26 |          28 |      22 |
+| Learned hybrid + rules (main)                           | 9.8%              | 28.7%       |       18.6 |       13 |         21 |           19 |          22 |      18 |
+| Learned hybrid + rules, magazine overviews also removed | 11.4%             | 34.0%       |       22.8 |       14 |         28 |           24 |          27 |      21 |
+| Learned hybrid + rules, type hidden                     | 12.8%             | 31.1%       |       20.4 |       14 |         24 |           22 |          23 |      19 |
+| Indexer type ('Review')                                 | 0.0%              | 0.0%        |        0.2 |        1 |          0 |            0 |           0 |       0 |
 
 'Rules' = title-only, non-paper and magazine rules (Section III-A.4); 'no rules' excludes every paper the classifier flags.
 
@@ -69,24 +70,26 @@ Books/editorials are not counted as surveys. '(+ magazine)' also excludes magazi
 
 ## Table IV(b) — comparison cohort, papers excluded by each method (averages over authors)
 
-| Method                              | Papers excluded   | Citations   |   Δh (avg) |   Δh ding |   Δh heath |   Δh jin |   Δh liang |   Δh ng |
-|-------------------------------------|-------------------|-------------|------------|-----------|------------|----------|------------|---------|
-| DistilBERT only (no rules)          | 9.4%              | 22.6%       |       11   |        13 |         11 |        8 |         13 |      10 |
-| DistilBERT + rules                  | 5.6%              | 16.3%       |        7   |         6 |          4 |        6 |         11 |       8 |
-| Learned hybrid (no rules)           | 7.3%              | 20.3%       |        9.4 |        10 |          8 |        8 |         12 |       9 |
-| Learned hybrid + rules (main)       | 4.9%              | 15.9%       |        6.6 |         6 |          3 |        6 |         11 |       7 |
-| Learned hybrid + rules, type hidden | 5.3%              | 16.1%       |        6.6 |         6 |          3 |        6 |         11 |       7 |
-| Indexer type ('Review')             | 0.0%              | 0.0%        |        0   |         0 |          0 |        0 |          0 |       0 |
+| Method                                                  | Papers excluded   | Citations   |   Δh (avg) |   Δh ding |   Δh heath |   Δh jin |   Δh liang |   Δh ng |
+|---------------------------------------------------------|-------------------|-------------|------------|-----------|------------|----------|------------|---------|
+| DistilBERT only (no rules)                              | 9.4%              | 22.6%       |       11   |        13 |         11 |        8 |         13 |      10 |
+| DistilBERT + rules                                      | 5.6%              | 16.3%       |        7   |         6 |          4 |        6 |         11 |       8 |
+| Learned hybrid (no rules)                               | 7.3%              | 20.3%       |        9.4 |        10 |          8 |        8 |         12 |       9 |
+| Learned hybrid + rules (main)                           | 4.9%              | 15.9%       |        6.6 |         6 |          3 |        6 |         11 |       7 |
+| Learned hybrid + rules, magazine overviews also removed | 6.0%              | 20.1%       |        9.4 |        10 |          8 |        8 |         12 |       9 |
+| Learned hybrid + rules, type hidden                     | 5.3%              | 16.1%       |        6.6 |         6 |          3 |        6 |         11 |       7 |
+| Indexer type ('Review')                                 | 0.0%              | 0.0%        |        0   |         0 |          0 |        0 |          0 |       0 |
 
 'Rules' = title-only, non-paper and magazine rules (Section III-A.4); 'no rules' excludes every paper the classifier flags.
 
 ## Table IV(c) — survey authors vs. comparison cohort (averages over authors)
 
-| Method                              | Papers: survey authors   | Papers: comparison   | Citations: survey authors   | Citations: comparison   |   Δh: survey authors |   Δh: comparison |
-|-------------------------------------|--------------------------|----------------------|-----------------------------|-------------------------|----------------------|------------------|
-| DistilBERT only (no rules)          | 19.0%                    | 9.4%                 | 38.9%                       | 22.6%                   |                 27.6 |             11   |
-| DistilBERT + rules                  | 10.8%                    | 5.6%                 | 29.2%                       | 16.3%                   |                 18.8 |              7   |
-| Learned hybrid (no rules)           | 16.1%                    | 7.3%                 | 36.6%                       | 20.3%                   |                 25   |              9.4 |
-| Learned hybrid + rules (main)       | 9.8%                     | 4.9%                 | 28.7%                       | 15.9%                   |                 18.6 |              6.6 |
-| Learned hybrid + rules, type hidden | 12.8%                    | 5.3%                 | 31.1%                       | 16.1%                   |                 20.4 |              6.6 |
-| Indexer type ('Review')             | 0.0%                     | 0.0%                 | 0.0%                        | 0.0%                    |                  0.2 |              0   |
+| Method                                                  | Papers: survey authors   | Papers: comparison   | Citations: survey authors   | Citations: comparison   |   Δh: survey authors |   Δh: comparison |
+|---------------------------------------------------------|--------------------------|----------------------|-----------------------------|-------------------------|----------------------|------------------|
+| DistilBERT only (no rules)                              | 19.0%                    | 9.4%                 | 38.9%                       | 22.6%                   |                 27.6 |             11   |
+| DistilBERT + rules                                      | 10.8%                    | 5.6%                 | 29.2%                       | 16.3%                   |                 18.8 |              7   |
+| Learned hybrid (no rules)                               | 16.1%                    | 7.3%                 | 36.6%                       | 20.3%                   |                 25   |              9.4 |
+| Learned hybrid + rules (main)                           | 9.8%                     | 4.9%                 | 28.7%                       | 15.9%                   |                 18.6 |              6.6 |
+| Learned hybrid + rules, magazine overviews also removed | 11.4%                    | 6.0%                 | 34.0%                       | 20.1%                   |                 22.8 |              9.4 |
+| Learned hybrid + rules, type hidden                     | 12.8%                    | 5.3%                 | 31.1%                       | 16.1%                   |                 20.4 |              6.6 |
+| Indexer type ('Review')                                 | 0.0%                     | 0.0%                 | 0.0%                        | 0.0%                    |                  0.2 |              0   |
