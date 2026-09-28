@@ -26,7 +26,7 @@ from classifier import prepare_frame
 from evaluate import metrics, all_methods, survey_proba_for
 from train import SPLIT_FILE
 
-PROFILE_SURVEY_RATE = 0.073  # estimated share of surveys in real author profiles (Table III)
+PROFILE_SURVEY_RATE = 0.080  # estimated survey rate of author-profile papers (reports/evaluation.md)
 N_BOOT = 2000
 
 
@@ -102,8 +102,7 @@ def run(test_csv: str, model_path: str, baseline_model: str, report_dir: str) ->
                             f"Prec. at {100 * PROFILE_SURVEY_RATE:.1f}% surveys"], tablefmt="github")))
 
         if variant == "title + abstract":
-            main = ["DistilBERT only", "Hybrid (OR, paper)", "Learned hybrid (title+abstract)",
-                    "Learned hybrid (+ reference count)"]
+            main = ["DistilBERT only", "Validation-fitted hybrid (+ reference count)", "Learned hybrid"]
             by_venue = []
             for venue, g in df[df["Label"] == 0].groupby("Venue"):
                 i = g.index.values

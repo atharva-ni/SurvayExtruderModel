@@ -24,10 +24,13 @@ Examples:
   # Train the classifier (also fits the threshold and learned hybrid):
   python main.py train --dataset data/real_dataset.csv
 
+  # Fit the learned hybrid and save its cross-validated predictions for the evaluation:
+  python main.py train-combiner --cv 5
+
   # Tune hyperparameters using Optuna (train/validation splits only):
   python main.py train --dataset data/real_dataset.csv --tune --trials 3
 
-  # Regenerate Table II and Table IV:
+  # Regenerate the evaluation reports:
   python main.py evaluate --baseline-model ./distilbert_survey_model_synthetic
 
   # Build a real labeled training dataset from OpenAlex:
@@ -58,8 +61,9 @@ Examples:
     parser_classify.add_argument("--model", type=str, default="./distilbert_survey_model", help="Path to fine-tuned model (default: ./distilbert_survey_model)")
     parser_classify.add_argument("--batch-size", type=int, default=32, help="Batch size for model inference (default: 32)")
     parser_classify.add_argument("--threshold", type=float, default=None, help="DistilBERT survey-probability threshold (default: tuned value saved with the model)")
-    parser_classify.add_argument("--mode", type=str, default="learned", choices=["learned", "or", "model", "keyword"], help="learned hybrid (default), OR rule from the paper, DistilBERT only, or keywords only")
-    parser_classify.add_argument("--exclude-magazine-overviews", action="store_true", help="Also exclude magazine articles flagged by the classifier that do not present themselves as surveys")
+    parser_classify.add_argument("--mode", type=str, default="learned", choices=["learned", "validation-hybrid", "or", "model", "keyword"], help="learned hybrid (default), the earlier hybrid fitted on the validation split only, OR rule, DistilBERT only, or keywords only")
+    parser_classify.add_argument("--magazine-rule", action="store_true", default=None, help="Report magazine articles without survey framing separately (default for modes other than learned)")
+    parser_classify.add_argument("--exclude-magazine-overviews", action="store_true", help="With the magazine rule, also exclude those magazine articles")
 
     # ---- Train Subparser ----
     parser_train = subparsers.add_parser("train", help="Train DistilBERT classifier or perform hyperparameter tuning")
@@ -71,8 +75,13 @@ Examples:
     parser_train.add_argument("--tune", action="store_true", help="Perform hyperparameter search with Optuna instead of training")
     parser_train.add_argument("--trials", type=int, default=5, help="Number of tuning trials for Optuna (default: 5)")
 
+    # ---- Train Combiner Subparser ----
+    parser_comb = subparsers.add_parser("train-combiner", help="Fit the learned hybrid on the validation split and labeled author-profile papers")
+    parser_comb.add_argument("--model", type=str, default="./distilbert_survey_model", help="Trained model directory")
+    parser_comb.add_argument("--cv", type=int, default=0, help="Repetitions of nested 10-fold cross-validation on the hand-labeled papers (0 = none)")
+
     # ---- Evaluate Subparser ----
-    parser_evaluate = subparsers.add_parser("evaluate", help="Regenerate Table II (classification) and Table IV (author impact)")
+    parser_evaluate = subparsers.add_parser("evaluate", help="Regenerate the classification and author-impact reports")
     parser_evaluate.add_argument("--model", type=str, default="./distilbert_survey_model", help="Trained model directory")
     parser_evaluate.add_argument("--eval-set", type=str, default="data/eval_to_label.csv", help="Hand-labeled evaluation CSV")
     parser_evaluate.add_argument("--authors", type=str, default="data/proauthor/*.csv", help="Glob of author profile CSVs for Table IV")
@@ -140,7 +149,8 @@ Examples:
             batch_size=args.batch_size,
             threshold=args.threshold,
             mode=args.mode,
-            exclude_magazine_overviews=args.exclude_magazine_overviews
+            exclude_magazine_overviews=args.exclude_magazine_overviews,
+            magazine_rule=args.magazine_rule,
         )
 
     elif args.command == "train":
@@ -156,6 +166,10 @@ Examples:
                 batch_size=args.batch_size,
                 lr=args.lr
             )
+
+    elif args.command == "train-combiner":
+        from train_combiner import run as run_combiner
+        run_combiner(model_path=args.model, cv=args.cv)
 
     elif args.command == "evaluate":
         from evaluate import run_evaluation

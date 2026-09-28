@@ -9,28 +9,32 @@ citation count without them. A web interface is in the companion repository
 ## How it works
 
 1. A fine-tuned **DistilBERT** model estimates, from title and abstract, how likely a paper is a survey.
-2. A **learned hybrid** (logistic regression) combines that score with title keywords, survey or research
-   phrasing in the abstract, a missing-abstract flag and the reference count.
+2. A **learned hybrid** (logistic regression) combines that score with DistilBERT's text representation,
+   title keywords, survey or research phrasing in the abstract, a missing-abstract flag, the reference count,
+   and magazine, arXiv and indexer-review flags. It is fitted on the validation split (title only) and on
+   author-profile papers: 1,000 labeled by an LLM (`data/llm_labels.csv`, rules in
+   `data/llm_labeling_codebook.md`) and 323 labeled by an author (`data/eval_to_label.csv`).
 3. **Decision rules** place each paper in one category:
 
 | Category | Meaning | In the adjusted metrics |
 |---|---|---|
 | `survey` | Survey, tutorial or review | Removed |
-| `magazine-overview` | Magazine article flagged by the model that does not present itself as a survey | Kept (optionally removed) |
 | `non-paper` | Book, editorial, erratum (from publication type or title) | Kept, never counted as a survey |
 | `research` | Original research | Kept |
 
-Papers with only a title count as surveys only if the title says so.
+Papers with only a title count as surveys only if the title says so. `--magazine-rule` reports magazine
+articles without survey framing as a separate `magazine-overview` category (the default for modes other than
+the learned hybrid).
 
 ## Results
 
 | Test | Result | Report |
 |---|---|---|
-| Held-out test split (1,925 journal papers) | 95.4% accuracy, 95.3% F1 | `reports/evaluation.md` |
-| arXiv papers from 45 venues not used in training (970) | 91.8% F1 | `reports/external_evaluation.md` |
-| Author-profile papers, blind-labeled by an author (323) | 72% precision, 63% recall (default system) | `reports/evaluation.md` |
-| Google Scholar top-20 papers not seen in training (69) | 66 correct (96%) | `reports/author_verification.md` |
-| Five prolific survey authors vs. five comparison authors | surveys: 9.8% vs. 4.9% of papers, 28.7% vs. 15.9% of citations | `reports/cohort/evaluation.md` |
+| Held-out test split (1,925 journal papers) | 93.5% accuracy, 93.2% F1 (DistilBERT alone: 95.3%, 95.2%) | `reports/evaluation.md` |
+| arXiv papers from 45 venues not used in training (970) | 87.0% F1 (DistilBERT alone: 92.0%) | `reports/external_evaluation.md` |
+| Author-profile papers, blind-labeled by an author (323) | 84% precision, 82% recall (nested cross-validation) | `reports/evaluation.md` |
+| Google Scholar top-20 papers not seen in training (44) | 40 correct (91%) | `reports/author_verification.md` |
+| Five prolific survey authors vs. five comparison authors | surveys: 9.8% vs. 5.3% of papers, 31.8% vs. 20.4% of citations | `reports/cohort/evaluation.md` |
 
 The adjusted metrics are an additional view of a publication record, suited to aggregate or cohort-level
 analysis. At this accuracy they should not be used to judge an individual researcher.
@@ -43,7 +47,8 @@ cp .env.example .env                # add an OpenAlex API key (free) and, option
 python -m pytest tests              # unit tests (no model needed)
 ```
 
-The trained model (about 260 MB) is not stored in this repository. Train it with `python main.py train`;
+The trained model (about 260 MB) is not stored in this repository. Train it with `python main.py train`
+and fit the learned hybrid with `python main.py train-combiner`;
 it is saved to `distilbert_survey_model/`.
 
 ## Usage
@@ -58,7 +63,8 @@ python main.py classify --input data/author.csv
 
 `classify` writes the research papers to `data/Non-Survey-Papers.csv` and the surveys and non-papers to
 `data/Survey-Papers.csv`. Each row gets `Category`, `SurveyScore` and `Prediction` (0 = survey, 1 = other).
-Options: `--mode learned|or|model|keyword` and `--exclude-magazine-overviews`.
+Options: `--mode learned|validation-hybrid|or|model|keyword`, `--magazine-rule` and
+`--exclude-magazine-overviews`.
 
 ## Reproducing the paper
 
@@ -66,6 +72,7 @@ Options: `--mode learned|or|model|keyword` and `--exclude-magazine-overviews`.
 |---|---|
 | Training data (Table II, Fig. 2) | `python main.py build-dataset` · `python visualization/Bargraphplot.py` |
 | Model | `python main.py train` (thresholds only: `python src/train.py --retune-thresholds`) |
+| Learned hybrid and its cross-validation on author profiles | `python main.py train-combiner --cv 5` |
 | Test split and author profiles (Tables III, V) | `python src/evaluate.py --baseline-model ./distilbert_survey_model_synthetic --authors "data/proauthor_s2/*.csv"` |
 | Unseen venues (Table IV) | `python src/build_kaggle_test.py` · `python src/evaluate_external.py` |
 | Cohorts (Tables VI, VII) | `python src/build_cohort.py` · `python src/evaluate.py --eval-set none --authors "data/cohort_openalex/survey/*.csv" --comparison-authors "data/cohort_openalex/comparison/*.csv" --report-dir reports/cohort` · `python src/check_cohort_authors.py` |
@@ -81,6 +88,7 @@ the classifier and is not distributed; without it, the evaluation scripts skip t
 | `data/real_dataset.csv`, `data/real_dataset_split.csv` | Training data (9,624 papers from 23 journals, labeled by venue) and the train/validation/test split |
 | `data/hard_cases_to_label.csv` | Survey-like papers from research journals, set aside from training |
 | `data/eval_to_label.csv` | 328 author-profile papers: the author's blind labels (`Label`), the LLM labels (`LabelClaude`) and the sampling strata and weights |
+| `data/llm_labels.csv`, `data/llm_labeling_codebook.md` | 1,000 author-profile papers labeled by an LLM (Claude Opus 5.5) for fitting the learned hybrid, with the sampling strata and weights and the labeling rules |
 | `data/proauthor/`, `data/proauthor_s2/`, `data/author_ids.json` | Semantic Scholar profiles of the five survey authors (the second with merged author IDs) |
 | `data/kaggle_arxiv_test.csv`, `data/kaggle_arxiv_errors_to_review.csv` | Unseen-venue test set and its misclassified papers |
 | `data/cohort_openalex/`, `data/cohort_openalex.json` | OpenAlex profiles of both cohorts (retrieved 28 September 2026), author IDs and the selection record |

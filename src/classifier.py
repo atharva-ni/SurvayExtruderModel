@@ -6,17 +6,22 @@ h-index, i10-index and citations. Non-papers (editorials, errata, ...) stay in
 both the original and the filtered metrics.
 
 Modes:
-  * learned - learned hybrid combiner (default)
-  * or      - DistilBERT OR title keyword filter (the paper's hybrid)
+  * learned           - learned hybrid (default): logistic regression over the DistilBERT
+                        score, its [CLS] representation and metadata features, fitted on the
+                        validation split plus LLM- and hand-labeled author-profile papers
+                        (src/combiner.py); falls back to validation-hybrid if not trained
+  * validation-hybrid - earlier learned hybrid, fitted on the validation split only
+  * or                - DistilBERT OR title keyword filter
   * model   - DistilBERT only
   * keyword - title keyword filter only
 
 Categories:
   * non-paper         - books, editorials, errata, ... (by publication type or title)
   * survey            - detected survey
-  * magazine-overview - flagged by the classifier, but a magazine article that does
-                        not describe itself as a survey/tutorial/overview/review.
-                        Kept as research by default (--exclude-magazine-overviews to drop)
+  * magazine-overview - only with --magazine-rule (default for modes other than learned):
+                        flagged by the classifier, but a magazine article that does not
+                        describe itself as a survey/tutorial/overview/review. Kept as
+                        research unless --exclude-magazine-overviews is given
   * research          - everything else
 """
 
@@ -31,8 +36,11 @@ from text_utils import (NON_PAPER_TITLE, NON_PAPER_TYPES, MAGAZINE_VENUE, TITLE_
                         EXPLICIT_SURVEY_CUES, paper_text, clean_text)
 from inference import load_model, load_config, predict_survey_proba
 from hybrid import LearnedHybrid, or_rule, keyword_is_survey
+from combiner import SurveyCombiner, cls_embeddings, combiner_features
 
-MODES = ("learned", "or", "model", "keyword")
+MODES = ("learned", "validation-hybrid", "or", "model", "keyword")
+# The learned hybrid is fitted on labeled magazine articles, so it decides them itself
+DEFAULT_MAGAZINE_RULE = False
 
 
 # ============================================================================
@@ -98,6 +106,14 @@ def classify_frame(
     if mode == "or":
         return or_rule(survey_proba, frame["Title"], threshold), survey_proba
 
+    if mode == "learned":
+        profile_combiner = SurveyCombiner.load(model_path)
+        if profile_combiner is not None:
+            X = combiner_features(frame, survey_proba, cls_embeddings(frame, model_path, batch_size))
+            scores = profile_combiner.predict_proba(X)
+            return (scores >= profile_combiner.threshold).astype(int), scores
+
+    # Combiner fitted on the validation split only (earlier learned hybrid)
     combiner = LearnedHybrid.load(model_path)
     if combiner is None:
         print("⚠️  No hybrid combiner found for this model; falling back to the OR rule")
@@ -131,7 +147,7 @@ def has_no_metadata(frame: pd.DataFrame) -> np.ndarray:
     return (no_abstract & (frame["Venue"].str.strip() == "") & (frame["Type"].str.strip() == "")).values
 
 
-def categorize(frame: pd.DataFrame, is_survey: np.ndarray) -> np.ndarray:
+def categorize(frame: pd.DataFrame, is_survey: np.ndarray, magazine_rule: bool = True) -> np.ndarray:
     """Return one of: non-paper, survey, magazine-overview, research."""
     # With only a title, book titles look like overviews; require an explicit survey keyword instead
     title_only = has_no_metadata(frame)
@@ -139,7 +155,7 @@ def categorize(frame: pd.DataFrame, is_survey: np.ndarray) -> np.ndarray:
     is_survey = np.where(title_only, keyword, is_survey)
 
     non_paper = is_non_paper(frame)
-    magazine_only = is_magazine_without_survey_signal(frame)
+    magazine_only = is_magazine_without_survey_signal(frame) if magazine_rule else np.zeros(len(frame), bool)
     return np.where(non_paper, "non-paper",
            np.where(is_survey == 1, np.where(magazine_only, "magazine-overview", "survey"), "research"))
 
@@ -169,8 +185,13 @@ def exclude_predicted_surveys(
     mode: str = "learned",
     batch_size: int = 32,
     exclude_magazine_overviews: bool = False,
+    magazine_rule: Optional[bool] = None,
 ) -> dict:
-    """Classify papers, save research / excluded papers, and print metric changes."""
+    """
+    Classify papers, save research / excluded papers, and print metric changes.
+    magazine_rule: report magazine articles without survey framing separately (default: off for the
+    learned hybrid, which is fitted on labeled magazine articles; on for the other modes).
+    """
     if not os.path.exists(input_csv):
         raise FileNotFoundError(f"Input CSV file not found: {input_csv}")
 
@@ -185,7 +206,9 @@ def exclude_predicted_surveys(
     frame = prepare_frame(df)
     is_survey, score = classify_frame(frame, model_path=model_path, mode=mode, threshold=threshold,
                                       batch_size=batch_size, show_progress=True)
-    df["Category"] = categorize(frame, is_survey)
+    if magazine_rule is None:
+        magazine_rule = DEFAULT_MAGAZINE_RULE if mode == "learned" and SurveyCombiner.load(model_path) else True
+    df["Category"] = categorize(frame, is_survey, magazine_rule=magazine_rule)
     df["SurveyScore"] = np.round(score, 4)
     excluded_categories = {"survey"} | ({"magazine-overview"} if exclude_magazine_overviews else set())
     df["Prediction"] = (~df["Category"].isin(excluded_categories)).astype(int)  # 0 = survey, 1 = non-survey
@@ -249,6 +272,7 @@ def run_classification_pipeline(
     threshold: Optional[float] = None,
     mode: str = "learned",
     exclude_magazine_overviews: bool = False,
+    magazine_rule: Optional[bool] = None,
 ) -> dict:
     return exclude_predicted_surveys(
         input_csv=input_csv,
@@ -259,6 +283,7 @@ def run_classification_pipeline(
         mode=mode,
         batch_size=batch_size,
         exclude_magazine_overviews=exclude_magazine_overviews,
+        magazine_rule=magazine_rule,
     )
 
 
@@ -272,8 +297,10 @@ if __name__ == "__main__":
     parser.add_argument("--mode", type=str, default="learned", choices=MODES)
     parser.add_argument("--threshold", type=float, default=None)
     parser.add_argument("--exclude-magazine-overviews", action="store_true")
+    parser.add_argument("--magazine-rule", action="store_true", default=None)
     args = parser.parse_args()
 
     run_classification_pipeline(args.input, args.output, args.surveys, args.model,
                                 threshold=args.threshold, mode=args.mode,
-                                exclude_magazine_overviews=args.exclude_magazine_overviews)
+                                exclude_magazine_overviews=args.exclude_magazine_overviews,
+                                magazine_rule=args.magazine_rule)

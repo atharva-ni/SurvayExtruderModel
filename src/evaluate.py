@@ -6,10 +6,12 @@ Table II  - classification performance (survey = positive class) on
             (b) the hand-labeled author-profile set (data/eval_to_label.csv).
 Table IV  - impact of excluding detected surveys on each author profile.
 
-Methods: keyword only (title), TF-IDF + SVM, DistilBERT only, OR hybrid (paper),
-learned hybrid (title + abstract only), learned hybrid + reference count, and
-optionally a baseline model (e.g. the old synthetic-data model with its OR rule).
-Results are written to reports/evaluation.md and reports/evaluation.json.
+Methods: keyword only (title), TF-IDF + SVM, DistilBERT only, OR hybrid, the hybrid
+fitted on the validation split only (with and without the reference count), the learned
+hybrid (src/combiner.py; on the hand-labeled set its nested cross-validated predictions
+from `python main.py train-combiner --cv 5`), variants with the magazine rule, the
+indexer's document type, and optionally a baseline model (e.g. the old synthetic-data
+model with its OR rule). Results are written to reports/evaluation.md and .json.
 """
 
 import os
@@ -17,6 +19,7 @@ import glob
 import json
 import argparse
 from collections import Counter
+from numbers import Real
 from datetime import date
 
 import numpy as np
@@ -29,8 +32,11 @@ from tabulate import tabulate
 from text_utils import paper_text
 from inference import load_model, load_config, predict_survey_proba
 from hybrid import LearnedHybrid, or_rule, keyword_is_survey
-from classifier import prepare_frame, calculate_indices, categorize, is_magazine_without_survey_signal
+from classifier import (prepare_frame, calculate_indices, categorize, is_magazine_without_survey_signal,
+                        DEFAULT_MAGAZINE_RULE)
 from train import SPLIT_FILE
+from combiner import SurveyCombiner, cls_embeddings, combiner_features
+from train_combiner import CV_FILE
 
 
 def metrics(y_true, y_pred, weights=None) -> dict:
@@ -73,6 +79,17 @@ def stratified_bootstrap(y, preds: dict, w, strata, seed=42) -> dict:
                      "rec_rw_ci": np.percentile(stats[:, 1], [2.5, 97.5]).tolist(),
                      "rate_ci": np.percentile(stats[:, 2], [2.5, 97.5]).tolist()}
     return out
+
+
+def stratified_bootstrap_reps(y, rep_preds, w, strata, seed=42) -> dict:
+    """As stratified_bootstrap, for the average over repeated cross-validation predictions."""
+    rng = np.random.default_rng(seed)
+    groups = [np.flatnonzero(strata == s) for s in np.unique(strata)]
+    samples = [np.concatenate([rng.choice(g, size=len(g)) for g in groups]) for _ in range(N_BOOT)]
+    stats = np.array([np.mean([rw_prec_rec_rate(y[i], p[i], w[i]) for p in rep_preds], axis=0) for i in samples])
+    return {"prec_rw_ci": np.percentile(stats[:, 0], [2.5, 97.5]).tolist(),
+            "rec_rw_ci": np.percentile(stats[:, 1], [2.5, 97.5]).tolist(),
+            "rate_ci": np.percentile(stats[:, 2], [2.5, 97.5]).tolist()}
 
 
 def ci_str(ci) -> str:
@@ -122,10 +139,16 @@ def indexer_is_review(frame: pd.DataFrame) -> np.ndarray:
     return frame["Type"].str.contains(r"\breview\b", case=False, regex=True).astype(int).values
 
 
-def all_methods(frame, proba, model_path, svm, vectorizer, baseline=None) -> dict:
-    """Return {method name: is_survey predictions} for one dataset."""
+def all_methods(frame, proba, model_path, svm, vectorizer, baseline=None, learned=None,
+                saved_combiner=True) -> dict:
+    """
+    Return {method name: is_survey predictions} for one dataset.
+    learned: predictions of the learned hybrid to use instead of the saved combiner (e.g. cross-validated
+    predictions for papers the combiner was fitted on); by default the saved combiner is applied
+    (saved_combiner=False leaves the learned hybrid out).
+    """
     threshold = load_config(model_path)["threshold"]
-    combiner = LearnedHybrid.load(model_path)
+    validation_hybrid = LearnedHybrid.load(model_path)
     texts = [paper_text(t, a) for t, a in zip(frame["Title"], frame["Abstract"])]
 
     preds = {
@@ -133,20 +156,28 @@ def all_methods(frame, proba, model_path, svm, vectorizer, baseline=None) -> dic
         "TF-IDF + SVM": (svm.predict(vectorizer.transform(texts)) == 1).astype(int),
         "DistilBERT only": (proba >= threshold).astype(int),
         "Hybrid (OR, paper)": or_rule(proba, frame["Title"], threshold),
-        "Learned hybrid (title+abstract)": combiner.predict(frame, proba, use_refs=False),
-        "Learned hybrid (+ reference count)": combiner.predict(frame, proba, use_refs=True),
+        "Validation-fitted hybrid (title+abstract)": validation_hybrid.predict(frame, proba, use_refs=False),
+        "Validation-fitted hybrid (+ reference count)": validation_hybrid.predict(frame, proba, use_refs=True),
     }
+    if learned is None and saved_combiner:
+        combiner = SurveyCombiner.load(model_path)
+        if combiner is not None:
+            learned = combiner.predict(combiner_features(frame, proba, cls_embeddings(frame, model_path)))
+    if learned is not None:
+        preds["Learned hybrid"] = np.asarray(learned, dtype=int)
+
     magazine_only = is_magazine_without_survey_signal(frame)
     if magazine_only.any():
         preds["DistilBERT + magazine rule"] = preds["DistilBERT only"] * (~magazine_only)
-        preds["Learned hybrid + magazine rule"] = preds["Learned hybrid (+ reference count)"] * (~magazine_only)
+        preds["Validation-fitted hybrid + magazine rule"] =             preds["Validation-fitted hybrid (+ reference count)"] * (~magazine_only)
+        if learned is not None:
+            preds["Learned hybrid + magazine rule"] = preds["Learned hybrid"] * (~magazine_only)
     if (frame["Type"].str.strip() != "").any():
         preds["Indexer type ('Review')"] = indexer_is_review(frame)
         # The magazine rule also reads the indexer type; this variant shows the system without it
         if magazine_only.any():
             no_type = is_magazine_without_survey_signal(frame.assign(Type=""))
-            preds["Learned hybrid + magazine rule (type hidden)"] = \
-                preds["Learned hybrid (+ reference count)"] * (~no_type)
+            preds["Validation-fitted hybrid + magazine rule (type hidden)"] =                 preds["Validation-fitted hybrid (+ reference count)"] * (~no_type)
     if baseline is not None:
         name, base_proba, base_threshold = baseline
         preds[name] = or_rule(base_proba, frame["Title"], base_threshold)
@@ -162,36 +193,53 @@ def fmt_table(rows: dict, extra_cols=()) -> list:
     return table
 
 
-def author_impact(authors_glob: str, model_path: str) -> pd.DataFrame:
+def _title_key(t) -> str:
+    return " ".join(str(t).lower().split())
+
+
+def author_impact(authors_glob: str, model_path: str, magazine_rule: bool = DEFAULT_MAGAZINE_RULE,
+                  labeled_csvs=("data/llm_labels.csv", "data/eval_to_label.csv")) -> pd.DataFrame:
     """
-    Table IV: exclude detected surveys (learned hybrid) and recalculate metrics.
-    Books/editorials are not surveys and stay in both profiles. Magazine articles
-    without explicit survey framing are kept; the '+ magazine' columns show the
-    effect of excluding them as well.
+    Tables VI/VII: exclude detected surveys (learned hybrid + rules) and recalculate metrics.
+    Books/editorials are not surveys and stay in both profiles. 'In combiner training' counts the
+    profile papers that are among the labeled papers the learned hybrid was fitted on.
     """
-    combiner = LearnedHybrid.load(model_path)
+    combiner = SurveyCombiner.load(model_path)
+    validation_hybrid = LearnedHybrid.load(model_path)
     threshold = load_config(model_path)["threshold"]
+    labeled = set()
+    for path in labeled_csvs:
+        if os.path.exists(path):
+            labeled |= set(pd.read_csv(path, usecols=["Title"])["Title"].map(_title_key))
     rows, comparison = [], {}
     for path in sorted(glob.glob(authors_glob)):
         df = pd.read_csv(path)
         df["citationCount"] = df["citationCount"].fillna(0).astype(int)
         frame = prepare_frame(df)
         proba = survey_proba_for(frame, model_path)
-        hybrid = combiner.predict(frame, proba, use_refs=True)
-        category = categorize(frame, hybrid)
+        emb = cls_embeddings(frame, model_path)
+        learned = combiner.predict(combiner_features(frame, proba, emb))
+        no_type = frame.assign(Type="")
+        learned_no_type = combiner.predict(combiner_features(no_type, proba, emb))
+        category = categorize(frame, learned, magazine_rule=magazine_rule)
 
         # Same profile, other methods: which papers each one would exclude
         bert = (proba >= threshold).astype(int)
+        earlier = validation_hybrid.predict(frame, proba, use_refs=True)
         excluded_by = {
-            "DistilBERT only (no rules)": bert == 1,
-            "DistilBERT + rules": categorize(frame, bert) == "survey",
-            "Learned hybrid (no rules)": hybrid == 1,
+            "DistilBERT, no rules": bert == 1,
+            "DistilBERT + rules": categorize(frame, bert, magazine_rule=magazine_rule) == "survey",
+            "Learned hybrid, no rules": learned == 1,
             "Learned hybrid + rules (main)": category == "survey",
-            "Learned hybrid + rules, magazine overviews also removed":
-                (category == "survey") | (category == "magazine-overview"),
-            "Learned hybrid + rules, type hidden": categorize(frame.assign(Type=""), hybrid) == "survey",
-            "Indexer type ('Review')": indexer_is_review(frame) == 1,
         }
+        if magazine_rule:
+            excluded_by["+ magazine overviews"] = (category == "survey") | (category == "magazine-overview")
+        excluded_by.update({
+            "same, type hidden": categorize(no_type, learned_no_type, magazine_rule=magazine_rule) == "survey",
+            "Validation-fitted hybrid + rules incl. magazine rule (earlier system)":
+                categorize(frame, earlier, magazine_rule=True) == "survey",
+            "Indexer type ('Review')": indexer_is_review(frame) == 1,
+        })
         h0, _ = calculate_indices(df)
         for method, mask in excluded_by.items():
             comparison.setdefault(method, {})[os.path.basename(path)] = {
@@ -201,35 +249,40 @@ def author_impact(authors_glob: str, model_path: str) -> pd.DataFrame:
             }
 
         survey = category == "survey"
-        survey_or_magazine = survey | (category == "magazine-overview")
         h0, i0 = calculate_indices(df)
         h1, i1 = calculate_indices(df[~survey])
-        h2, _ = calculate_indices(df[~survey_or_magazine])
         total_cites = max(1, df["citationCount"].sum())
-
         names = Counter(n.strip() for s in df.get("authors", pd.Series(dtype=str)).dropna() for n in str(s).split(";"))
-        rows.append({
+        row = {
             "Author": names.most_common(1)[0][0] if names else os.path.basename(path),
             "File": os.path.basename(path),
             "Papers": len(df),
             "Surveys": int(survey.sum()),
-            "Magazine overviews": int((category == "magazine-overview").sum()),
             "Non-papers": int((category == "non-paper").sum()),
+            "In combiner training": int(frame["Title"].map(_title_key).isin(labeled).sum()),
+            "Citations": int(df["citationCount"].sum()),
+            "Citations*": int(df.loc[~survey, "citationCount"].sum()),
             "Papers excluded": 100 * survey.mean(),
             "Citation reduction": 100 * df.loc[survey, "citationCount"].sum() / total_cites,
-            "h-index": f"{h0} → {h1}",
+            "h-index": h0,
+            "h-index*": h1,
             "h-index drop": h0 - h1,
+            "h-index change": 100 * (h1 - h0) / max(1, h0),
             "i10-index reduction": 100 * (1 - i1 / max(1, i0)),
-            "Citation reduction (+ magazine)": 100 * df.loc[survey_or_magazine, "citationCount"].sum() / total_cites,
-            "h-index drop (+ magazine)": h0 - h2,
-        })
+        }
+        if magazine_rule:
+            both = survey | (category == "magazine-overview")
+            row["Magazine overviews"] = int((category == "magazine-overview").sum())
+            row["Citation reduction (+ magazine)"] = 100 * df.loc[both, "citationCount"].sum() / total_cites
+            row["h-index drop (+ magazine)"] = h0 - calculate_indices(df[~both])[0]
+        rows.append(row)
     table = pd.DataFrame(rows)
     if not table.empty:
-        avg = {"Author": "Average", "File": "", "Papers": "", "Surveys": "", "Magazine overviews": "",
-               "Non-papers": "", "h-index": ""}
-        for col in ("Papers excluded", "Citation reduction", "h-index drop", "i10-index reduction",
-                    "Citation reduction (+ magazine)", "h-index drop (+ magazine)"):
-            avg[col] = table[col].mean()
+        avg = {c: "" for c in table.columns}
+        avg["Author"] = "Average"
+        for col in table.columns:
+            if col not in ("Author", "File") and pd.api.types.is_numeric_dtype(table[col]):
+                avg[col] = table[col].mean()
         table = pd.concat([table, pd.DataFrame([avg])], ignore_index=True)
     return table, comparison
 
@@ -285,6 +338,9 @@ def run_evaluation(
     results = {"date": str(date.today()), "model": os.path.abspath(model_path),
                "threshold": load_config(model_path)["threshold"],
                "hybrid_coefficients": {k: float(v) for k, v in LearnedHybrid.load(model_path).coefficients().items()}}
+    combiner = SurveyCombiner.load(model_path)
+    if combiner is not None:
+        results["learned_hybrid"] = {"C": combiner.C, "threshold": combiner.threshold}
     sections = []
 
     def baseline_for(frame):
@@ -321,8 +377,24 @@ def run_evaluation(
             frame = prepare_frame(ev)
             y = (ev["Label"] == "0").astype(int).values
             w = ev["StratumWeight"].values if "StratumWeight" in ev.columns else None
+            # The learned hybrid is fitted on these papers: use its cross-validated predictions
+            # (src/train_combiner.py --cv), never the saved combiner
+            learned_cv = None
+            cv_path = os.path.join(model_path, CV_FILE)
+            if os.path.exists(cv_path):
+                with open(cv_path, encoding="utf-8") as f:
+                    cv = json.load(f)
+                pos = {i: k for k, i in enumerate(cv["ids"])}
+                idx = [pos.get(str(i)) for i in ev["id"]]
+                if None not in idx:
+                    reps = np.array(cv["predictions"])[:, idx]
+                    learned_cv = reps[0]
+                    results["learned_hybrid_cv_repetitions"] = [
+                        dict(zip(("prec_rw", "rec_rw"), rw_prec_rec_rate(y, r, w)[:2])) for r in reps]
+            if learned_cv is None:
+                print(f"No cross-validated predictions in '{cv_path}'; the learned hybrid is left out of Table II(b)")
             preds = all_methods(frame, survey_proba_for(frame, model_path), model_path, svm, vectorizer,
-                                baseline_for(frame))
+                                baseline_for(frame), learned=learned_cv, saved_combiner=False)
             if "LabelClaude" in ev.columns and ev["LabelClaude"].isin(["0", "1"]).all():
                 # Zero-shot LLM baseline: the LLM's labels scored against the author's labels
                 preds["LLM labels (Claude)"] = (ev["LabelClaude"] == "0").astype(int).values
@@ -337,6 +409,21 @@ def run_evaluation(
             if confident is not None:
                 for name, p in preds.items():
                     rows[name]["f1_confident"] = metrics(y[confident], p[confident])["f1"]
+
+            if learned_cv is not None:
+                # Average the learned hybrid's rows over the CV repetitions (bootstrap CIs of the average)
+                magazine_only = is_magazine_without_survey_signal(frame)
+                variants = {"Learned hybrid": reps, "Learned hybrid + magazine rule": reps * (~magazine_only)}
+                for name, rep_preds in variants.items():
+                    if name not in rows:
+                        continue
+                    ms = [metrics(y, p, w) for p in rep_preds]
+                    rows[name] = {k: float(np.mean([m[k] for m in ms])) for k in ms[0]}
+                    if confident is not None:
+                        rows[name]["f1_confident"] = float(np.mean(
+                            [metrics(y[confident], p[confident])["f1"] for p in rep_preds]))
+                    if w is not None:
+                        rows[name].update(stratified_bootstrap_reps(y, rep_preds, w, ev["Stratum"].values))
 
             labeled_by = ", ".join(sorted(ev["LabeledBy"].dropna().unique())) if "LabeledBy" in ev.columns else "unknown"
             results["hand_labeled"] = {"n": len(y), "surveys": int(y.sum()), "labeled_by": labeled_by, "results": rows}
@@ -357,7 +444,13 @@ def run_evaluation(
                 f"Table II(b) — hand-labeled author-profile papers (n = {len(y)}, {y.sum()} surveys; labels: {labeled_by})",
                 tabulate(table, headers=headers, tablefmt="github") +
                 "\n\n(rw) = reweighted by sampling stratum to the real mix of papers in the profiles; "
-                f"estimated true survey rate: {rate}. CIs: {N_BOOT} bootstrap resamples within each stratum."))
+                f"estimated true survey rate: {rate}. CIs: {N_BOOT} bootstrap resamples within each stratum." +
+                ("" if learned_cv is None else
+                 f" Learned hybrid rows: fitted on these papers, so scored by nested 10-fold cross-validation, "
+                 f"averaged over {len(reps)} repetitions (reweighted precision per repetition: " +
+                 ", ".join(f"{100 * r['prec_rw']:.1f}%" for r in results["learned_hybrid_cv_repetitions"]) +
+                 "; recall: " +
+                 ", ".join(f"{100 * r['rec_rw']:.1f}%" for r in results["learned_hybrid_cv_repetitions"]) + ").")))
             if w is not None:
                 sections.append(("Sampling design of the hand-labeled set",
                                  sampling_table(results["hand_labeled_sampling"])))
@@ -385,18 +478,24 @@ def run_evaluation(
         results[key] = table.to_dict(orient="records")
         results[key + "_by_method"] = comparison
         show = table.drop(columns=["File"]).copy()
-        for col in ("Papers excluded", "Citation reduction", "i10-index reduction", "Citation reduction (+ magazine)"):
-            show[col] = show[col].map(lambda v: f"{v:.2f}%")
-        for col in ("h-index drop", "h-index drop (+ magazine)"):
-            show[col] = show[col].map(lambda v: f"{v:.1f}" if isinstance(v, float) else v)
-        sections.append((f"Table IV — impact of excluding detected surveys, {label} (learned hybrid; {pattern})",
+        for col in show.columns:
+            if col in ("Papers excluded", "Citation reduction", "i10-index reduction", "h-index change",
+                       "Citation reduction (+ magazine)"):
+                show[col] = show[col].map(lambda v: f"{v:.1f}%" if isinstance(v, Real) else v)
+            elif col in ("Papers", "Surveys", "Non-papers", "In combiner training", "Citations", "Citations*",
+                         "h-index", "h-index*", "h-index drop", "Magazine overviews", "h-index drop (+ magazine)"):
+                show[col] = show[col].map(lambda v: v if not isinstance(v, Real) else
+                                          f"{int(v):,}" if float(v).is_integer() else f"{v:,.1f}")
+        sections.append((f"Table IV — impact of excluding detected surveys, {label} (learned hybrid + rules; {pattern})",
                          tabulate(show.values.tolist(), headers=list(show.columns), tablefmt="github") +
-                         "\n\nBooks/editorials are not counted as surveys. '(+ magazine)' also excludes magazine "
-                         "articles that the classifier flagged but that do not present themselves as surveys."))
+                         "\n\n* Excluding papers categorized as surveys. Books/editorials are not counted as surveys. "
+                         "'In combiner training': profile papers among the labeled papers the learned hybrid was "
+                         "fitted on."))
         sections.append((f"Table IV(b) — {label}, papers excluded by each method (averages over authors)",
                          method_comparison_table(comparison) +
-                         "\n\n'Rules' = title-only, non-paper and magazine rules (Section III-A.4); 'no rules' "
-                         "excludes every paper the classifier flags."))
+                         "\n\n'Rules' = title-only and non-paper rules" +
+                         (" and the magazine rule" if DEFAULT_MAGAZINE_RULE else "") +
+                         "; 'no rules' excludes every paper the classifier flags."))
     if len(cohorts) == 2:
         sections.append(("Table IV(c) — survey authors vs. comparison cohort (averages over authors)",
                          cohort_comparison_table(cohorts["survey authors"], cohorts["comparison cohort"])))
@@ -405,7 +504,10 @@ def run_evaluation(
     os.makedirs(report_dir, exist_ok=True)
     md = [f"# Survey classifier evaluation ({results['date']})", "",
           f"Model: `{model_path}` — DistilBERT threshold {results['threshold']:.2f}", "",
-          f"Learned hybrid coefficients: `{results['hybrid_coefficients']}`", ""]
+          f"Validation-fitted hybrid coefficients: `{results['hybrid_coefficients']}`", ""]
+    if "learned_hybrid" in results:
+        md += [f"Learned hybrid (src/combiner.py): C = {results['learned_hybrid']['C']}, threshold "
+               f"{results['learned_hybrid']['threshold']:.2f}", ""]
     for title, table in sections:
         md += [f"## {title}", "", table, ""]
         print(f"\n{title}\n{table}")

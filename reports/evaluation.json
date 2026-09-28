@@ -1,5 +1,5 @@
 {
-  "date": "2026-09-28",
+  "date": "2026-09-29",
   "model": "E:\\Survay\\distilbert_survey_model",
   "threshold": 0.9600000000000001,
   "hybrid_coefficients": {
@@ -10,6 +10,10 @@
     "abstract_missing": 0.262,
     "log_refs": 0.807,
     "refs_missing": 2.985
+  },
+  "learned_hybrid": {
+    "C": 0.1,
+    "threshold": 0.74
   },
   "test_split": {
     "n": 1925,
@@ -39,17 +43,23 @@
         "rec": 0.9314641744548287,
         "f1": 0.9522292993630573
       },
-      "Learned hybrid (title+abstract)": {
+      "Validation-fitted hybrid (title+abstract)": {
         "acc": 0.9490909090909091,
         "prec": 0.9800221975582686,
         "rec": 0.9169262720664589,
         "f1": 0.9474248927038627
       },
-      "Learned hybrid (+ reference count)": {
+      "Validation-fitted hybrid (+ reference count)": {
         "acc": 0.9542857142857143,
         "prec": 0.9781420765027322,
         "rec": 0.9293873312564901,
         "f1": 0.9531416400425985
+      },
+      "Learned hybrid": {
+        "acc": 0.935064935064935,
+        "prec": 0.9838337182448037,
+        "rec": 0.8847352024922118,
+        "f1": 0.931656642974303
       },
       "Indexer type ('Review')": {
         "acc": 0.5215584415584416,
@@ -93,17 +103,23 @@
         "rec": 0.822429906542056,
         "f1": 0.8795113825652415
       },
-      "Learned hybrid (title+abstract)": {
+      "Validation-fitted hybrid (title+abstract)": {
         "acc": 0.8867532467532467,
         "prec": 0.9482551143200962,
         "rec": 0.818276220145379,
         "f1": 0.8784838350055741
       },
-      "Learned hybrid (+ reference count)": {
+      "Validation-fitted hybrid (+ reference count)": {
         "acc": 0.9012987012987013,
         "prec": 0.9499417927823051,
         "rec": 0.8473520249221184,
         "f1": 0.8957189901207464
+      },
+      "Learned hybrid": {
+        "acc": 0.8664935064935065,
+        "prec": 0.94125,
+        "rec": 0.7819314641744548,
+        "f1": 0.8542257515598412
       },
       "Indexer type ('Review')": {
         "acc": 0.5215584415584416,
@@ -119,6 +135,28 @@
       }
     }
   },
+  "learned_hybrid_cv_repetitions": [
+    {
+      "prec_rw": 0.7831542120762125,
+      "rec_rw": 0.8301672847576105
+    },
+    {
+      "prec_rw": 0.7918088299427927,
+      "rec_rw": 0.8234972386008911
+    },
+    {
+      "prec_rw": 0.8981536715601404,
+      "rec_rw": 0.8234972386008911
+    },
+    {
+      "prec_rw": 0.8445137592087172,
+      "rec_rw": 0.8234972386008911
+    },
+    {
+      "prec_rw": 0.9040321270909925,
+      "rec_rw": 0.8168271924441717
+    }
+  ],
   "hand_labeled_sampling": [
     {
       "stratum": "abstract_cue",
@@ -249,7 +287,7 @@
         ],
         "f1_confident": 0.8792270531400966
       },
-      "Learned hybrid (title+abstract)": {
+      "Validation-fitted hybrid (title+abstract)": {
         "acc": 0.8730650154798761,
         "prec": 0.7397260273972602,
         "rec": 0.972972972972973,
@@ -273,7 +311,7 @@
         ],
         "f1_confident": 0.883495145631068
       },
-      "Learned hybrid (+ reference count)": {
+      "Validation-fitted hybrid (+ reference count)": {
         "acc": 0.8730650154798761,
         "prec": 0.7397260273972602,
         "rec": 0.972972972972973,
@@ -296,6 +334,30 @@
           0.10578811471750253
         ],
         "f1_confident": 0.883495145631068
+      },
+      "Learned hybrid": {
+        "acc": 0.9362229102167182,
+        "prec": 0.8844129488927852,
+        "rec": 0.9369369369369369,
+        "f1": 0.9098876485230527,
+        "acc_reweighted": 0.9733759876464326,
+        "prec_reweighted": 0.8443325199757711,
+        "rec_reweighted": 0.8234972386008911,
+        "survey_rate_true": 0.08016344522515692,
+        "survey_rate_pred": 0.0784893186877115,
+        "f1_confident": 0.9368400167084378,
+        "prec_rw_ci": [
+          0.7474794241447963,
+          0.9348665001157425
+        ],
+        "rec_rw_ci": [
+          0.6567030415514286,
+          0.9777712030141028
+        ],
+        "rate_ci": [
+          0.058137800237297144,
+          0.10578811471750253
+        ]
       },
       "DistilBERT + magazine rule": {
         "acc": 0.8606811145510835,
@@ -321,7 +383,7 @@
         ],
         "f1_confident": 0.8842105263157894
       },
-      "Learned hybrid + magazine rule": {
+      "Validation-fitted hybrid + magazine rule": {
         "acc": 0.8637770897832817,
         "prec": 0.7723577235772358,
         "rec": 0.8558558558558559,
@@ -344,6 +406,30 @@
           0.10578811471750253
         ],
         "f1_confident": 0.8854166666666666
+      },
+      "Learned hybrid + magazine rule": {
+        "acc": 0.9077399380804954,
+        "prec": 0.9011842360706659,
+        "rec": 0.8216216216216216,
+        "f1": 0.859562405881832,
+        "acc_reweighted": 0.9632536978091988,
+        "prec_reweighted": 0.9011842360706659,
+        "rec_reweighted": 0.6083082094928096,
+        "survey_rate_true": 0.08016344522515692,
+        "survey_rate_pred": 0.054111020629024564,
+        "f1_confident": 0.9135174953959483,
+        "prec_rw_ci": [
+          0.8443133848924218,
+          0.9574490481522957
+        ],
+        "rec_rw_ci": [
+          0.4518895712292735,
+          0.8298627449194982
+        ],
+        "rate_ci": [
+          0.058137800237297144,
+          0.10578811471750253
+        ]
       },
       "Indexer type ('Review')": {
         "acc": 0.8452012383900929,
@@ -369,7 +455,7 @@
         ],
         "f1_confident": 0.8648648648648649
       },
-      "Learned hybrid + magazine rule (type hidden)": {
+      "Validation-fitted hybrid + magazine rule (type hidden)": {
         "acc": 0.8544891640866873,
         "prec": 0.7807017543859649,
         "rec": 0.8018018018018018,
@@ -453,96 +539,108 @@
     {
       "Author": "Zhu Han",
       "File": "han.csv",
-      "Papers": 1353,
-      "Surveys": 114,
-      "Magazine overviews": 21,
-      "Non-papers": 17,
-      "Papers excluded": 8.425720620842572,
-      "Citation reduction": 21.869882811943786,
-      "h-index": "128 \u2192 117",
+      "Papers": 1353.0,
+      "Surveys": 87.0,
+      "Non-papers": 17.0,
+      "In combiner training": 124.0,
+      "Citations": 70229.0,
+      "Citations*": 54988.0,
+      "Papers excluded": 6.430155210643015,
+      "Citation reduction": 21.701861054550115,
+      "h-index": 128.0,
+      "h-index*": 117.0,
       "h-index drop": 11.0,
-      "i10-index reduction": 9.259259259259256,
-      "Citation reduction (+ magazine)": 25.204687522248644,
-      "h-index drop (+ magazine)": 14.0
+      "h-index change": -8.59375,
+      "i10-index reduction": 7.4074074074074066
     },
     {
       "Author": "L. Hanzo",
       "File": "hanzo.csv",
-      "Papers": 2710,
-      "Surveys": 180,
-      "Magazine overviews": 23,
-      "Non-papers": 10,
-      "Papers excluded": 6.642066420664207,
-      "Citation reduction": 31.770505086882146,
-      "h-index": "131 \u2192 108",
-      "h-index drop": 23.0,
-      "i10-index reduction": 10.274509803921571,
-      "Citation reduction (+ magazine)": 34.77199063653552,
-      "h-index drop (+ magazine)": 26.0
+      "Papers": 2710.0,
+      "Surveys": 165.0,
+      "Non-papers": 10.0,
+      "In combiner training": 129.0,
+      "Citations": 88856.0,
+      "Citations*": 62785.0,
+      "Papers excluded": 6.088560885608856,
+      "Citation reduction": 29.340731070496084,
+      "h-index": 131.0,
+      "h-index*": 109.0,
+      "h-index drop": 22.0,
+      "h-index change": -16.793893129770993,
+      "i10-index reduction": 9.333333333333337
     },
     {
       "Author": "E. Hossain",
       "File": "hossain.csv",
-      "Papers": 733,
-      "Surveys": 125,
-      "Magazine overviews": 9,
-      "Non-papers": 28,
-      "Papers excluded": 17.053206002728512,
-      "Citation reduction": 37.52556747318533,
-      "h-index": "107 \u2192 80",
-      "h-index drop": 27.0,
-      "i10-index reduction": 22.51184834123223,
-      "Citation reduction (+ magazine)": 40.93788974806685,
-      "h-index drop (+ magazine)": 29.0
+      "Papers": 733.0,
+      "Surveys": 101.0,
+      "Non-papers": 28.0,
+      "In combiner training": 71.0,
+      "Citations": 40090.0,
+      "Citations*": 27042.0,
+      "Papers excluded": 13.77899045020464,
+      "Citation reduction": 32.54676976802195,
+      "h-index": 107.0,
+      "h-index*": 85.0,
+      "h-index drop": 22.0,
+      "h-index change": -20.560747663551403,
+      "i10-index reduction": 17.77251184834123
     },
     {
       "Author": "D. Niyato",
       "File": "niyato.csv",
-      "Papers": 2514,
-      "Surveys": 350,
-      "Magazine overviews": 68,
-      "Non-papers": 44,
-      "Papers excluded": 13.922036595067622,
-      "Citation reduction": 38.607936960216946,
-      "h-index": "143 \u2192 114",
-      "h-index drop": 29.0,
-      "i10-index reduction": 18.343653250773993,
-      "Citation reduction (+ magazine)": 41.90927223242972,
-      "h-index drop (+ magazine)": 32.0
+      "Papers": 2514.0,
+      "Surveys": 292.0,
+      "Non-papers": 44.0,
+      "In combiner training": 382.0,
+      "Citations": 101777.0,
+      "Citations*": 65531.0,
+      "Papers excluded": 11.614956245027845,
+      "Citation reduction": 35.61315424899535,
+      "h-index": 143.0,
+      "h-index*": 116.0,
+      "h-index drop": 27.0,
+      "h-index change": -18.88111888111888,
+      "i10-index reduction": 15.170278637770895
     },
     {
       "Author": "F. Yu",
       "File": "yu.csv",
-      "Papers": 985,
-      "Surveys": 86,
-      "Magazine overviews": 13,
-      "Non-papers": 33,
-      "Papers excluded": 8.730964467005077,
-      "Citation reduction": 30.1905840638235,
-      "h-index": "101 \u2192 86",
-      "h-index drop": 15.0,
-      "i10-index reduction": 11.962616822429906,
-      "Citation reduction (+ magazine)": 33.97271742342165,
-      "h-index drop (+ magazine)": 17.0
+      "Papers": 985.0,
+      "Surveys": 79.0,
+      "Non-papers": 33.0,
+      "In combiner training": 82.0,
+      "Citations": 40612.0,
+      "Citations*": 27646.0,
+      "Papers excluded": 8.020304568527918,
+      "Citation reduction": 31.926524180045305,
+      "h-index": 101.0,
+      "h-index*": 85.0,
+      "h-index drop": 16.0,
+      "h-index change": -15.841584158415841,
+      "i10-index reduction": 12.149532710280376
     },
     {
       "Author": "Average",
       "File": "",
-      "Papers": "",
-      "Surveys": "",
-      "Magazine overviews": "",
-      "Non-papers": "",
-      "Papers excluded": 10.9547988212616,
-      "Citation reduction": 31.992895279210348,
-      "h-index": "",
-      "h-index drop": 21.0,
-      "i10-index reduction": 14.47037749552339,
-      "Citation reduction (+ magazine)": 35.35931151254048,
-      "h-index drop (+ magazine)": 23.6
+      "Papers": 1659.0,
+      "Surveys": 144.8,
+      "Non-papers": 26.4,
+      "In combiner training": 157.6,
+      "Citations": 68312.8,
+      "Citations*": 47598.4,
+      "Papers excluded": 9.186593472002453,
+      "Citation reduction": 30.225808064421763,
+      "h-index": 122.0,
+      "h-index*": 102.4,
+      "h-index drop": 19.6,
+      "h-index change": -16.134218766571426,
+      "i10-index reduction": 12.366612787426648
     }
   ],
   "author_impact_by_method": {
-    "DistilBERT only (no rules)": {
+    "DistilBERT, no rules": {
       "han.csv": {
         "excluded": 15.151515151515152,
         "citations": 28.855600962565322,
@@ -571,59 +669,113 @@
     },
     "DistilBERT + rules": {
       "han.csv": {
-        "excluded": 8.869179600886918,
-        "citations": 22.49213287957966,
-        "h_drop": 11
+        "excluded": 10.495195861049519,
+        "citations": 26.168676757464866,
+        "h_drop": 14
       },
       "hanzo.csv": {
-        "excluded": 7.011070110701106,
-        "citations": 32.976951472044654,
-        "h_drop": 25
-      },
-      "hossain.csv": {
-        "excluded": 17.598908594815825,
-        "citations": 37.82738837615366,
-        "h_drop": 27
-      },
-      "niyato.csv": {
-        "excluded": 14.558472553699284,
-        "citations": 38.95280859133203,
+        "excluded": 8.191881918819188,
+        "citations": 37.537138741334296,
         "h_drop": 29
       },
-      "yu.csv": {
-        "excluded": 9.746192893401014,
-        "citations": 30.498374864572046,
-        "h_drop": 15
-      }
-    },
-    "Learned hybrid (no rules)": {
-      "han.csv": {
-        "excluded": 14.412416851441243,
-        "citations": 27.81187258824702,
-        "h_drop": 15
-      },
-      "hanzo.csv": {
-        "excluded": 13.136531365313653,
-        "citations": 36.68857477266589,
-        "h_drop": 30
-      },
       "hossain.csv": {
-        "excluded": 28.376534788540248,
-        "citations": 44.684459965078574,
-        "h_drop": 32
+        "excluded": 19.099590723055933,
+        "citations": 41.37440758293839,
+        "h_drop": 29
       },
       "niyato.csv": {
-        "excluded": 19.610182975338105,
-        "citations": 44.08658144767482,
-        "h_drop": 33
+        "excluded": 17.859984089101033,
+        "citations": 42.77587274138558,
+        "h_drop": 32
       },
       "yu.csv": {
-        "excluded": 12.48730964467005,
-        "citations": 34.19925145277258,
+        "excluded": 11.472081218274113,
+        "citations": 34.66709346991037,
         "h_drop": 17
       }
     },
+    "Learned hybrid, no rules": {
+      "han.csv": {
+        "excluded": 9.238728750923872,
+        "citations": 23.43333950362386,
+        "h_drop": 12
+      },
+      "hanzo.csv": {
+        "excluded": 9.815498154981551,
+        "citations": 31.21229855046367,
+        "h_drop": 26
+      },
+      "hossain.csv": {
+        "excluded": 20.327421555252386,
+        "citations": 34.55724619605887,
+        "h_drop": 24
+      },
+      "niyato.csv": {
+        "excluded": 13.961813842482101,
+        "citations": 37.2137123318628,
+        "h_drop": 28
+      },
+      "yu.csv": {
+        "excluded": 9.644670050761421,
+        "citations": 32.14074657736629,
+        "h_drop": 16
+      }
+    },
     "Learned hybrid + rules (main)": {
+      "han.csv": {
+        "excluded": 6.430155210643015,
+        "citations": 21.701861054550115,
+        "h_drop": 11
+      },
+      "hanzo.csv": {
+        "excluded": 6.088560885608856,
+        "citations": 29.340731070496084,
+        "h_drop": 22
+      },
+      "hossain.csv": {
+        "excluded": 13.77899045020464,
+        "citations": 32.54676976802195,
+        "h_drop": 22
+      },
+      "niyato.csv": {
+        "excluded": 11.614956245027845,
+        "citations": 35.61315424899535,
+        "h_drop": 27
+      },
+      "yu.csv": {
+        "excluded": 8.020304568527918,
+        "citations": 31.926524180045305,
+        "h_drop": 16
+      }
+    },
+    "same, type hidden": {
+      "han.csv": {
+        "excluded": 6.0606060606060606,
+        "citations": 21.69616540175711,
+        "h_drop": 11
+      },
+      "hanzo.csv": {
+        "excluded": 5.645756457564575,
+        "citations": 28.691365805347978,
+        "h_drop": 21
+      },
+      "hossain.csv": {
+        "excluded": 12.687585266030013,
+        "citations": 31.309553504614616,
+        "h_drop": 22
+      },
+      "niyato.csv": {
+        "excluded": 11.495624502784407,
+        "citations": 35.5561669139393,
+        "h_drop": 27
+      },
+      "yu.csv": {
+        "excluded": 7.918781725888325,
+        "citations": 31.92406185363932,
+        "h_drop": 16
+      }
+    },
+    "Validation-fitted hybrid + rules incl. magazine rule (earlier system)": {
       "han.csv": {
         "excluded": 8.425720620842572,
         "citations": 21.869882811943786,
@@ -647,60 +799,6 @@
       "yu.csv": {
         "excluded": 8.730964467005077,
         "citations": 30.1905840638235,
-        "h_drop": 15
-      }
-    },
-    "Learned hybrid + rules, magazine overviews also removed": {
-      "han.csv": {
-        "excluded": 9.977827050997783,
-        "citations": 25.204687522248644,
-        "h_drop": 14
-      },
-      "hanzo.csv": {
-        "excluded": 7.490774907749078,
-        "citations": 34.77199063653552,
-        "h_drop": 26
-      },
-      "hossain.csv": {
-        "excluded": 18.281036834924965,
-        "citations": 40.93788974806685,
-        "h_drop": 29
-      },
-      "niyato.csv": {
-        "excluded": 16.626889419252187,
-        "citations": 41.90927223242972,
-        "h_drop": 32
-      },
-      "yu.csv": {
-        "excluded": 10.050761421319796,
-        "citations": 33.97271742342165,
-        "h_drop": 17
-      }
-    },
-    "Learned hybrid + rules, type hidden": {
-      "han.csv": {
-        "excluded": 7.169253510716925,
-        "citations": 19.104643380939496,
-        "h_drop": 10
-      },
-      "hanzo.csv": {
-        "excluded": 5.682656826568266,
-        "citations": 27.91370307013595,
-        "h_drop": 19
-      },
-      "hossain.csv": {
-        "excluded": 13.369713506139155,
-        "citations": 27.031678722873533,
-        "h_drop": 22
-      },
-      "niyato.csv": {
-        "excluded": 12.092283214001592,
-        "citations": 34.2729693349185,
-        "h_drop": 23
-      },
-      "yu.csv": {
-        "excluded": 8.629441624365482,
-        "citations": 30.18812173741751,
         "h_drop": 15
       }
     },
