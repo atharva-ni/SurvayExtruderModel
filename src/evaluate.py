@@ -132,6 +132,11 @@ def all_methods(frame, proba, model_path, svm, vectorizer, baseline=None) -> dic
         preds["Learned hybrid + magazine rule"] = preds["Learned hybrid (+ reference count)"] * (~magazine_only)
     if (frame["Type"].str.strip() != "").any():
         preds["Indexer type ('Review')"] = indexer_is_review(frame)
+        # The magazine rule also reads the indexer type; this variant shows the system without it
+        if magazine_only.any():
+            no_type = is_magazine_without_survey_signal(frame.assign(Type=""))
+            preds["Learned hybrid + magazine rule (type hidden)"] = \
+                preds["Learned hybrid (+ reference count)"] * (~no_type)
     if baseline is not None:
         name, base_proba, base_threshold = baseline
         preds[name] = or_rule(base_proba, frame["Title"], base_threshold)
@@ -172,6 +177,7 @@ def author_impact(authors_glob: str, model_path: str) -> pd.DataFrame:
             "DistilBERT + rules": categorize(frame, bert) == "survey",
             "Learned hybrid (no rules)": hybrid == 1,
             "Learned hybrid + rules (main)": category == "survey",
+            "Learned hybrid + rules, type hidden": categorize(frame.assign(Type=""), hybrid) == "survey",
             "Indexer type ('Review')": indexer_is_review(frame) == 1,
         }
         h0, _ = calculate_indices(df)

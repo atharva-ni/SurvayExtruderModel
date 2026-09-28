@@ -369,6 +369,30 @@
         ],
         "f1_confident": 0.8983957219251337
       },
+      "Learned hybrid + magazine rule (type hidden)": {
+        "acc": 0.9040247678018576,
+        "prec": 0.8771929824561403,
+        "rec": 0.8547008547008547,
+        "f1": 0.8658008658008658,
+        "acc_reweighted": 0.973018277440891,
+        "prec_reweighted": 0.8771929824561403,
+        "rec_reweighted": 0.7328047368498191,
+        "survey_rate_true": 0.07296539621618528,
+        "survey_rate_pred": 0.060955102289612664,
+        "prec_rw_ci": [
+          0.816495654273298,
+          0.9322033898305084
+        ],
+        "rec_rw_ci": [
+          0.580456950991061,
+          0.8947368421052632
+        ],
+        "rate_ci": [
+          0.05881632677067889,
+          0.09231757180537785
+        ],
+        "f1_confident": 0.9263157894736842
+      },
       "Baseline: distilbert_survey_model_synthetic (OR, th=0.8)": {
         "acc": 0.7492260061919505,
         "prec": 0.8214285714285714,
@@ -593,6 +617,33 @@
       "yu.csv": {
         "excluded": 8.730964467005077,
         "citations": 30.1905840638235,
+        "h_drop": 15
+      }
+    },
+    "Learned hybrid + rules, type hidden": {
+      "han.csv": {
+        "excluded": 7.169253510716925,
+        "citations": 19.104643380939496,
+        "h_drop": 10
+      },
+      "hanzo.csv": {
+        "excluded": 5.682656826568266,
+        "citations": 27.91370307013595,
+        "h_drop": 19
+      },
+      "hossain.csv": {
+        "excluded": 13.369713506139155,
+        "citations": 27.031678722873533,
+        "h_drop": 22
+      },
+      "niyato.csv": {
+        "excluded": 12.092283214001592,
+        "citations": 34.2729693349185,
+        "h_drop": 23
+      },
+      "yu.csv": {
+        "excluded": 8.629441624365482,
+        "citations": 30.18812173741751,
         "h_drop": 15
       }
     },

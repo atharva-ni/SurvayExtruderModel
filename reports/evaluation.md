@@ -43,6 +43,7 @@ Learned hybrid coefficients: `{'bert_logit': 0.493, 'title_terms': 2.242, 'abstr
 | DistilBERT + magazine rule                               | 90.4%  | 85.2%   | 88.9%    | 87.0% | 92.7%             | 80.4%        | 83.3%         | 7.6%           | 67–91%              | 68–94%               |
 | Learned hybrid + magazine rule                           | 90.7%  | 85.4%   | 89.7%    | 87.5% | 92.8%             | 86.4%        | 84.1%         | 7.1%           | 80–92%              | 69–95%               |
 | Indexer type ('Review')                                  | 88.9%  | 84.6%   | 84.6%    | 84.6% | 89.8%             | 74.4%        | 79.7%         | 7.8%           | 59–90%              | 66–91%               |
+| Learned hybrid + magazine rule (type hidden)             | 90.4%  | 87.7%   | 85.5%    | 86.6% | 92.6%             | 87.7%        | 73.3%         | 6.1%           | 82–93%              | 58–89%               |
 | Baseline: distilbert_survey_model_synthetic (OR, th=0.8) | 74.9%  | 82.1%   | 39.3%    | 53.2% | 60.9%             | 34.4%        | 33.7%         | 7.2%           | 23–58%              | 26–44%               |
 
 (rw) = reweighted by sampling stratum to the real mix of papers in the profiles; estimated true survey rate: 7.3% (95% CI 6–9%). CIs: 2000 bootstrap resamples within each stratum.
@@ -72,12 +73,13 @@ Books/editorials are not counted as surveys. '(+ magazine)' also excludes magazi
 
 ## Table IV(b) — the same profiles, papers excluded by each method (averages over authors)
 
-| Method                        | Papers excluded   | Citations   |   Δh (avg) |   Δh han |   Δh hanzo |   Δh hossain |   Δh niyato |   Δh yu |
-|-------------------------------|-------------------|-------------|------------|----------|------------|--------------|-------------|---------|
-| DistilBERT only (no rules)    | 18.7%             | 38.7%       |       26.2 |       16 |         32 |           32 |          34 |      17 |
-| DistilBERT + rules            | 11.6%             | 32.5%       |       21.4 |       11 |         25 |           27 |          29 |      15 |
-| Learned hybrid (no rules)     | 17.6%             | 37.5%       |       25.4 |       15 |         30 |           32 |          33 |      17 |
-| Learned hybrid + rules (main) | 11.0%             | 32.0%       |       21   |       11 |         23 |           27 |          29 |      15 |
-| Indexer type ('Review')       | 10.0%             | 31.4%       |       21   |       10 |         27 |           25 |          27 |      16 |
+| Method                              | Papers excluded   | Citations   |   Δh (avg) |   Δh han |   Δh hanzo |   Δh hossain |   Δh niyato |   Δh yu |
+|-------------------------------------|-------------------|-------------|------------|----------|------------|--------------|-------------|---------|
+| DistilBERT only (no rules)          | 18.7%             | 38.7%       |       26.2 |       16 |         32 |           32 |          34 |      17 |
+| DistilBERT + rules                  | 11.6%             | 32.5%       |       21.4 |       11 |         25 |           27 |          29 |      15 |
+| Learned hybrid (no rules)           | 17.6%             | 37.5%       |       25.4 |       15 |         30 |           32 |          33 |      17 |
+| Learned hybrid + rules (main)       | 11.0%             | 32.0%       |       21   |       11 |         23 |           27 |          29 |      15 |
+| Learned hybrid + rules, type hidden | 9.4%              | 27.7%       |       17.8 |       10 |         19 |           22 |          23 |      15 |
+| Indexer type ('Review')             | 10.0%             | 31.4%       |       21   |       10 |         27 |           25 |          27 |      16 |
 
 'Rules' = title-only, non-paper and magazine rules (Section III-A.4); 'no rules' excludes every paper the classifier flags.
