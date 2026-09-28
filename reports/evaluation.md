@@ -30,39 +30,39 @@ Learned hybrid coefficients: `{'bert_logit': 0.493, 'title_terms': 2.242, 'abstr
 | Indexer type ('Review')                                  | 52.2%  | 100.0%  | 4.4%     | 8.4%  |
 | Baseline: distilbert_survey_model_synthetic (OR, th=0.8) | 78.5%  | 92.7%   | 62.0%    | 74.3% |
 
-## Table II(b) — hand-labeled author-profile papers (n = 323, 117 surveys; labels: claude, verified by first author, first author (blind))
+## Table II(b) — hand-labeled author-profile papers (n = 323, 111 surveys; labels: first author)
 
 | Method                                                   | Acc.   | Prec.   | Recall   | F1    | F1 (H+M labels)   | Prec. (rw)   | Recall (rw)   | Flagged (rw)   | Prec. (rw) 95% CI   | Recall (rw) 95% CI   |
 |----------------------------------------------------------|--------|---------|----------|-------|-------------------|--------------|---------------|----------------|---------------------|----------------------|
-| Keyword only (title)                                     | 74.9%  | 100.0%  | 30.8%    | 47.1% | 55.0%             | 100.0%       | 26.4%         | 1.9%           | 100–100%            | 20–35%               |
-| TF-IDF + SVM                                             | 88.2%  | 78.0%   | 94.0%    | 85.3% | 88.3%             | 54.3%        | 94.9%         | 12.7%          | 41–71%              | 90–98%               |
-| DistilBERT only                                          | 89.5%  | 77.9%   | 99.1%    | 87.2% | 90.0%             | 57.3%        | 99.3%         | 12.6%          | 44–74%              | 98–100%              |
-| Hybrid (OR, paper)                                       | 89.5%  | 77.9%   | 99.1%    | 87.2% | 90.0%             | 57.3%        | 99.3%         | 12.6%          | 44–74%              | 98–100%              |
-| Learned hybrid (title+abstract)                          | 90.4%  | 79.5%   | 99.1%    | 88.2% | 90.4%             | 73.3%        | 99.3%         | 9.9%           | 60–85%              | 98–100%              |
-| Learned hybrid (+ reference count)                       | 90.4%  | 79.5%   | 99.1%    | 88.2% | 90.4%             | 71.8%        | 92.1%         | 9.4%           | 59–84%              | 77–100%              |
-| DistilBERT + magazine rule                               | 89.8%  | 84.4%   | 88.0%    | 86.2% | 92.7%             | 79.7%        | 82.6%         | 7.6%           | 66–91%              | 68–93%               |
-| Learned hybrid + magazine rule                           | 90.1%  | 84.6%   | 88.9%    | 86.7% | 92.8%             | 85.7%        | 83.3%         | 7.1%           | 79–91%              | 69–94%               |
-| Indexer type ('Review')                                  | 88.2%  | 83.8%   | 83.8%    | 83.8% | 89.8%             | 73.7%        | 78.9%         | 7.8%           | 58–89%              | 65–90%               |
-| Learned hybrid + magazine rule (type hidden)             | 89.8%  | 86.8%   | 84.6%    | 85.7% | 92.6%             | 86.8%        | 72.5%         | 6.1%           | 80–92%              | 57–89%               |
-| Baseline: distilbert_survey_model_synthetic (OR, th=0.8) | 74.9%  | 82.1%   | 39.3%    | 53.2% | 60.9%             | 34.4%        | 33.7%         | 7.2%           | 23–58%              | 26–43%               |
+| Keyword only (title)                                     | 76.2%  | 97.2%   | 31.5%    | 47.6% | 54.3%             | 97.2%        | 23.3%         | 1.9%           | 91–100%             | 17–33%               |
+| TF-IDF + SVM                                             | 88.9%  | 76.6%   | 97.3%    | 85.7% | 88.2%             | 57.6%        | 91.5%         | 12.7%          | 44–75%              | 78–100%              |
+| DistilBERT only                                          | 87.0%  | 73.2%   | 98.2%    | 83.8% | 87.9%             | 58.4%        | 92.2%         | 12.6%          | 44–74%              | 78–100%              |
+| Hybrid (OR, paper)                                       | 87.0%  | 73.2%   | 98.2%    | 83.8% | 87.9%             | 58.4%        | 92.2%         | 12.6%          | 44–74%              | 78–100%              |
+| Learned hybrid (title+abstract)                          | 87.3%  | 74.0%   | 97.3%    | 84.0% | 88.3%             | 68.9%        | 85.0%         | 9.9%           | 56–81%              | 69–100%              |
+| Learned hybrid (+ reference count)                       | 87.3%  | 74.0%   | 97.3%    | 84.0% | 88.3%             | 67.2%        | 78.5%         | 9.4%           | 55–80%              | 62–100%              |
+| DistilBERT + magazine rule                               | 86.1%  | 77.0%   | 84.7%    | 80.7% | 88.4%             | 66.4%        | 62.7%         | 7.6%           | 52–82%              | 47–86%               |
+| Learned hybrid + magazine rule                           | 86.4%  | 77.2%   | 85.6%    | 81.2% | 88.5%             | 71.6%        | 63.4%         | 7.1%           | 59–83%              | 47–86%               |
+| Indexer type ('Review')                                  | 84.5%  | 76.1%   | 80.2%    | 78.1% | 86.5%             | 60.9%        | 59.4%         | 7.8%           | 47–78%              | 44–80%               |
+| Learned hybrid + magazine rule (type hidden)             | 85.4%  | 78.1%   | 80.2%    | 79.1% | 87.2%             | 78.1%        | 59.4%         | 6.1%           | 71–85%              | 44–80%               |
+| Baseline: distilbert_survey_model_synthetic (OR, th=0.8) | 76.8%  | 82.1%   | 41.4%    | 55.1% | 61.7%             | 34.4%        | 30.7%         | 7.2%           | 23–58%              | 23–42%               |
 
-(rw) = reweighted by sampling stratum to the real mix of papers in the profiles; estimated true survey rate: 7.3% (95% CI 6–9%). CIs: 2000 bootstrap resamples within each stratum.
+(rw) = reweighted by sampling stratum to the real mix of papers in the profiles; estimated true survey rate: 8.0% (95% CI 6–11%). CIs: 2000 bootstrap resamples within each stratum.
 
 ## Sampling design of the hand-labeled set
 
 | Stratum      | Definition                                         |   Pool |   Sampled |   Labeled |   Surveys |   Weight | Share of est. survey rate   |
 |--------------|----------------------------------------------------|--------|-----------|-----------|-----------|----------|-----------------------------|
-| abstract_cue | survey phrasing in the abstract, none in the title |    120 |       120 |       117 |        69 |    1     | 3.7%                        |
-| random       | everything else                                    |   1717 |       160 |       159 |         2 |   10.731 | 1.1%                        |
-| title_kw     | survey term in the title                           |     48 |        48 |        47 |        46 |    1     | 2.5%                        |
+| abstract_cue | survey phrasing in the abstract, none in the title |    120 |       120 |       117 |        63 |    1     | 3.4%                        |
+| random       | everything else                                    |   1717 |       160 |       159 |         4 |   10.731 | 2.3%                        |
+| title_kw     | survey term in the title                           |     48 |        48 |        47 |        44 |    1     | 2.4%                        |
 
 Pool = profile papers with an abstract of at least 30 words, deduplicated by title, not in the training set. Weight = pool / sampled. Estimated survey rate = weighted surveys / weighted labeled papers.
 
 ## Label agreement: first author (blind) vs. LLM
 
-68 papers labeled survey or research by both: agreement 94.1%, Cohen's kappa 0.88; 4 disagreements (the first author's label is used). The remaining papers carry the LLM label, verified by the first author.
+323 papers labeled survey or research by both: agreement 91.3%, Cohen's kappa 0.81; 28 disagreements (the first author's label is used). All papers were labeled blind by the first author.
 
-## Table IV — impact of excluding detected surveys (learned hybrid; data/proauthor_s2/*.csv)
+## Table IV — impact of excluding detected surveys, survey authors (learned hybrid; data/proauthor_s2/*.csv)
 
 | Author     |   Papers |   Surveys |   Magazine overviews |   Non-papers | Papers excluded   | Citation reduction   | h-index   |   h-index drop | i10-index reduction   | Citation reduction (+ magazine)   |   h-index drop (+ magazine) |
 |------------|----------|-----------|----------------------|--------------|-------------------|----------------------|-----------|----------------|-----------------------|-----------------------------------|-----------------------------|
@@ -75,7 +75,7 @@ Pool = profile papers with an abstract of at least 30 words, deduplicated by tit
 
 Books/editorials are not counted as surveys. '(+ magazine)' also excludes magazine articles that the classifier flagged but that do not present themselves as surveys.
 
-## Table IV(b) — the same profiles, papers excluded by each method (averages over authors)
+## Table IV(b) — survey authors, papers excluded by each method (averages over authors)
 
 | Method                              | Papers excluded   | Citations   |   Δh (avg) |   Δh han |   Δh hanzo |   Δh hossain |   Δh niyato |   Δh yu |
 |-------------------------------------|-------------------|-------------|------------|----------|------------|--------------|-------------|---------|

@@ -247,12 +247,26 @@ def method_comparison_table(comparison: dict) -> str:
     return tabulate(rows, headers=headers, tablefmt="github")
 
 
+def cohort_comparison_table(survey: dict, comparison: dict) -> str:
+    """Per method: average share of papers / citations excluded and h-index drop in each cohort."""
+    avg = lambda per_author, k: np.mean([v[k] for v in per_author.values()])
+    rows = [[method,
+             f"{avg(survey[method], 'excluded'):.1f}%", f"{avg(comparison[method], 'excluded'):.1f}%",
+             f"{avg(survey[method], 'citations'):.1f}%", f"{avg(comparison[method], 'citations'):.1f}%",
+             f"{avg(survey[method], 'h_drop'):.1f}", f"{avg(comparison[method], 'h_drop'):.1f}"]
+            for method in survey if method in comparison]
+    return tabulate(rows, headers=["Method", "Papers: survey authors", "Papers: comparison",
+                                   "Citations: survey authors", "Citations: comparison",
+                                   "Δh: survey authors", "Δh: comparison"], tablefmt="github")
+
+
 def run_evaluation(
     model_path: str = "./distilbert_survey_model",
     eval_set: str = "data/eval_to_label.csv",
     authors_glob: str = "data/proauthor/*.csv",
     baseline_model: str = None,
     report_dir: str = "reports",
+    comparison_glob: str = None,
 ) -> dict:
     split_path = os.path.join(model_path, SPLIT_FILE)
     if not os.path.exists(split_path):
@@ -345,30 +359,42 @@ def run_evaluation(
             if {"LabelClaude", "LabelHumanBlind"} <= set(ev_all.columns):
                 results["label_agreement"] = label_agreement(ev_all)
                 a = results["label_agreement"]
+                n_blind = int((ev_all["LabelHumanBlind"] != "").sum())
+                rest = ("All papers were labeled blind by the first author." if n_blind == len(ev_all) else
+                        f"{n_blind} papers were labeled blind by the first author; the others carry the LLM label, "
+                        "verified by the first author.")
                 sections.append(("Label agreement: first author (blind) vs. LLM", (
                     f"{a['n']} papers labeled survey or research by both: agreement {100 * a['agreement']:.1f}%, "
                     f"Cohen's kappa {a['kappa']:.2f}; {a['disagreements']} disagreements (the first author's label "
-                    f"is used). The remaining papers carry the LLM label, verified by the first author.")))
+                    f"is used). {rest}")))
 
-    # ---- Table IV ----
-    if authors_glob and glob.glob(authors_glob):
-        print("📊 Recalculating author metrics (Table IV)...")
-        table, comparison = author_impact(authors_glob, model_path)
-        results["author_impact"] = table.to_dict(orient="records")
-        results["author_impact_by_method"] = comparison
+    # ---- Table IV (survey authors) and the comparison cohort ----
+    cohorts = {}
+    for key, label, pattern in (("author_impact", "survey authors", authors_glob),
+                                ("comparison_impact", "comparison cohort", comparison_glob)):
+        if not (pattern and glob.glob(pattern)):
+            continue
+        print(f"📊 Recalculating author metrics ({label})...")
+        table, comparison = author_impact(pattern, model_path)
+        cohorts[label] = comparison
+        results[key] = table.to_dict(orient="records")
+        results[key + "_by_method"] = comparison
         show = table.drop(columns=["File"]).copy()
         for col in ("Papers excluded", "Citation reduction", "i10-index reduction", "Citation reduction (+ magazine)"):
             show[col] = show[col].map(lambda v: f"{v:.2f}%")
         for col in ("h-index drop", "h-index drop (+ magazine)"):
             show[col] = show[col].map(lambda v: f"{v:.1f}" if isinstance(v, float) else v)
-        sections.append((f"Table IV — impact of excluding detected surveys (learned hybrid; {authors_glob})",
+        sections.append((f"Table IV — impact of excluding detected surveys, {label} (learned hybrid; {pattern})",
                          tabulate(show.values.tolist(), headers=list(show.columns), tablefmt="github") +
                          "\n\nBooks/editorials are not counted as surveys. '(+ magazine)' also excludes magazine "
                          "articles that the classifier flagged but that do not present themselves as surveys."))
-        sections.append(("Table IV(b) — the same profiles, papers excluded by each method (averages over authors)",
+        sections.append((f"Table IV(b) — {label}, papers excluded by each method (averages over authors)",
                          method_comparison_table(comparison) +
                          "\n\n'Rules' = title-only, non-paper and magazine rules (Section III-A.4); 'no rules' "
                          "excludes every paper the classifier flags."))
+    if len(cohorts) == 2:
+        sections.append(("Table IV(c) — survey authors vs. comparison cohort (averages over authors)",
+                         cohort_comparison_table(cohorts["survey authors"], cohorts["comparison cohort"])))
 
     # ---- Report ----
     os.makedirs(report_dir, exist_ok=True)
@@ -393,5 +419,8 @@ if __name__ == "__main__":
     parser.add_argument("--authors", type=str, default="data/proauthor/*.csv")
     parser.add_argument("--baseline-model", type=str, default=None)
     parser.add_argument("--report-dir", type=str, default="reports")
+    parser.add_argument("--comparison-authors", type=str, default=None,
+                        help="Glob of comparison-cohort profiles (authors who rarely publish surveys)")
     args = parser.parse_args()
-    run_evaluation(args.model, args.eval_set, args.authors, args.baseline_model, args.report_dir)
+    run_evaluation(args.model, args.eval_set, args.authors, args.baseline_model, args.report_dir,
+                   args.comparison_authors)

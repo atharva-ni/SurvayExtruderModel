@@ -40,3 +40,5 @@ distilbert_survey_model*/
 !data/proauthor_s2/*.csv
 !data/kaggle_arxiv_test.csv
 !data/kaggle_arxiv_errors_to_review.csv
+!data/cohort_openalex/survey/*.csv
+!data/cohort_openalex/comparison/*.csv

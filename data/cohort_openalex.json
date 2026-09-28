@@ -1,0 +1,519 @@
+{
+ "_rule": "Selection (fixed rule, no hand-picking): among the 60 most prolific authors of\nIEEE JSAC and IEEE Transactions on Wireless Communications (2010-2025, OpenAlex),\ntake the first five, by number of papers there, whose OpenAlex h-index lies in\nthe range of the survey cohort and who have at most MAX_COMST papers in IEEE\nCommunications Surveys & Tutorials. The survey-cohort authors are excluded.",
+ "source": "OpenAlex",
+ "date": "2026-09-28",
+ "h_range": [
+  87,
+  143
+ ],
+ "max_comst": 4,
+ "candidates": [
+  {
+   "openalex": "A5042307561",
+   "name": "H. Vincent Poor",
+   "jsac_twc_papers": 248,
+   "h_index": 190,
+   "comst_papers": 16,
+   "eligible": false
+  },
+  {
+   "openalex": "A5083193286",
+   "name": "Mohamed\u2010Slim Alouini",
+   "jsac_twc_papers": 196,
+   "h_index": 130,
+   "comst_papers": 20,
+   "eligible": false
+  },
+  {
+   "openalex": "A5030858163",
+   "name": "Tony Q. S. Quek",
+   "jsac_twc_papers": 181,
+   "h_index": 85,
+   "comst_papers": 4,
+   "eligible": false
+  },
+  {
+   "openalex": "A5013079905",
+   "name": "Shi Hong Jin",
+   "jsac_twc_papers": 154,
+   "h_index": 99,
+   "comst_papers": 4,
+   "eligible": true
+  },
+  {
+   "openalex": "A5006080984",
+   "name": "Derrick Wing Kwan Ng",
+   "jsac_twc_papers": 142,
+   "h_index": 104,
+   "comst_papers": 3,
+   "eligible": true
+  },
+  {
+   "openalex": "A5100422102",
+   "name": "Rui Zhang",
+   "jsac_twc_papers": 142,
+   "h_index": 156,
+   "comst_papers": 8,
+   "eligible": false
+  },
+  {
+   "openalex": "A5033990377",
+   "name": "Robert Schober",
+   "jsac_twc_papers": 140,
+   "h_index": 112,
+   "comst_papers": 12,
+   "eligible": false
+  },
+  {
+   "openalex": "A5076863392",
+   "name": "Yuanwei Liu",
+   "jsac_twc_papers": 134,
+   "h_index": 99,
+   "comst_papers": 7,
+   "eligible": false
+  },
+  {
+   "openalex": "A5100773343",
+   "name": "Xuemin Shen",
+   "jsac_twc_papers": 132,
+   "h_index": 151,
+   "comst_papers": 27,
+   "eligible": false
+  },
+  {
+   "openalex": "A5011048761",
+   "name": "Kai\u2010Kit Wong",
+   "jsac_twc_papers": 131,
+   "h_index": 88,
+   "comst_papers": 5,
+   "eligible": false
+  },
+  {
+   "openalex": "A5002904166",
+   "name": "Zhiguo Ding",
+   "jsac_twc_papers": 129,
+   "h_index": 119,
+   "comst_papers": 4,
+   "eligible": true
+  },
+  {
+   "openalex": "A5060020877",
+   "name": "Chau Yuen",
+   "jsac_twc_papers": 109,
+   "h_index": 103,
+   "comst_papers": 12,
+   "eligible": false
+  },
+  {
+   "openalex": "A5035919267",
+   "name": "Victor C. M. Leung",
+   "jsac_twc_papers": 108,
+   "h_index": 120,
+   "comst_papers": 17,
+   "eligible": false
+  },
+  {
+   "openalex": "A5039289964",
+   "name": "Geoffrey Ye Li",
+   "jsac_twc_papers": 104,
+   "h_index": 102,
+   "comst_papers": 5,
+   "eligible": false
+  },
+  {
+   "openalex": "A5056145687",
+   "name": "M\u00e9rouane Debbah",
+   "jsac_twc_papers": 104,
+   "h_index": 119,
+   "comst_papers": 13,
+   "eligible": false
+  },
+  {
+   "openalex": "A5079052203",
+   "name": "Khaled B. Letaief",
+   "jsac_twc_papers": 102,
+   "h_index": 98,
+   "comst_papers": 6,
+   "eligible": false
+  },
+  {
+   "openalex": "A5002265731",
+   "name": "Arumugam Nallanathan",
+   "jsac_twc_papers": 99,
+   "h_index": 92,
+   "comst_papers": 9,
+   "eligible": false
+  },
+  {
+   "openalex": "A5100620739",
+   "name": "Bo Ai",
+   "jsac_twc_papers": 96,
+   "h_index": 87,
+   "comst_papers": 7,
+   "eligible": false
+  },
+  {
+   "openalex": "A5007832415",
+   "name": "Ying\u2010Chang Liang",
+   "jsac_twc_papers": 92,
+   "h_index": 112,
+   "comst_papers": 4,
+   "eligible": true
+  },
+  {
+   "openalex": "A5050402661",
+   "name": "Feifei Gao",
+   "jsac_twc_papers": 92,
+   "h_index": 82,
+   "comst_papers": 1,
+   "eligible": false
+  },
+  {
+   "openalex": "A5007131492",
+   "name": "Kaibin Huang",
+   "jsac_twc_papers": 88,
+   "h_index": 67,
+   "comst_papers": 4,
+   "eligible": false
+  },
+  {
+   "openalex": "A5048817096",
+   "name": "Qingqing Wu",
+   "jsac_twc_papers": 87,
+   "h_index": 92,
+   "comst_papers": 6,
+   "eligible": false
+  },
+  {
+   "openalex": "A5029812222",
+   "name": "Robert W. Heath",
+   "jsac_twc_papers": 83,
+   "h_index": 133,
+   "comst_papers": 1,
+   "eligible": true
+  },
+  {
+   "openalex": "A5081612175",
+   "name": "Marco Di Renzo",
+   "jsac_twc_papers": 83,
+   "h_index": 103,
+   "comst_papers": 12,
+   "eligible": false
+  },
+  {
+   "openalex": "A5100751311",
+   "name": "Zhaoyang Zhang",
+   "jsac_twc_papers": 83,
+   "h_index": 77,
+   "comst_papers": 3,
+   "eligible": false
+  },
+  {
+   "openalex": "A5024108653",
+   "name": "Walid Saad",
+   "jsac_twc_papers": 82,
+   "h_index": 107,
+   "comst_papers": 9,
+   "eligible": false
+  },
+  {
+   "openalex": "A5029002143",
+   "name": "Jiangzhou Wang",
+   "jsac_twc_papers": 82,
+   "h_index": 63,
+   "comst_papers": 0,
+   "eligible": false
+  },
+  {
+   "openalex": "A5100653327",
+   "name": "Wei Zhang",
+   "jsac_twc_papers": 79,
+   "h_index": 66,
+   "comst_papers": 6,
+   "eligible": false
+  },
+  {
+   "openalex": "A5071725365",
+   "name": "Andreas F. Molisch",
+   "jsac_twc_papers": 77,
+   "h_index": 107,
+   "comst_papers": 1,
+   "eligible": true
+  },
+  {
+   "openalex": "A5100448724",
+   "name": "Yonghui Li",
+   "jsac_twc_papers": 77,
+   "h_index": 84,
+   "comst_papers": 2,
+   "eligible": false
+  },
+  {
+   "openalex": "A5102012574",
+   "name": "Lingyang Song",
+   "jsac_twc_papers": 76,
+   "h_index": 91,
+   "comst_papers": 1,
+   "eligible": true
+  },
+  {
+   "openalex": "A5100458455",
+   "name": "Haijun Zhang",
+   "jsac_twc_papers": 75,
+   "h_index": 72,
+   "comst_papers": 2,
+   "eligible": false
+  },
+  {
+   "openalex": "A5072916702",
+   "name": "Xiaohu You",
+   "jsac_twc_papers": 74,
+   "h_index": 72,
+   "comst_papers": 9,
+   "eligible": false
+  },
+  {
+   "openalex": "A5091837980",
+   "name": "Jinhong Yuan",
+   "jsac_twc_papers": 72,
+   "h_index": 77,
+   "comst_papers": 2,
+   "eligible": false
+  },
+  {
+   "openalex": "A5050692023",
+   "name": "Xiqi Gao",
+   "jsac_twc_papers": 71,
+   "h_index": 68,
+   "comst_papers": 3,
+   "eligible": false
+  },
+  {
+   "openalex": "A5070530952",
+   "name": "Bruno Clerckx",
+   "jsac_twc_papers": 71,
+   "h_index": 72,
+   "comst_papers": 2,
+   "eligible": false
+  },
+  {
+   "openalex": "A5016154330",
+   "name": "Symeon Chatzinotas",
+   "jsac_twc_papers": 70,
+   "h_index": 81,
+   "comst_papers": 12,
+   "eligible": false
+  },
+  {
+   "openalex": "A5042833857",
+   "name": "Jeffrey G. Andrews",
+   "jsac_twc_papers": 69,
+   "h_index": 104,
+   "comst_papers": 0,
+   "eligible": true
+  },
+  {
+   "openalex": "A5061429095",
+   "name": "Mehdi Bennis",
+   "jsac_twc_papers": 68,
+   "h_index": 79,
+   "comst_papers": 5,
+   "eligible": false
+  },
+  {
+   "openalex": "A5100779393",
+   "name": "Cheng\u2010Xiang Wang",
+   "jsac_twc_papers": 68,
+   "h_index": 90,
+   "comst_papers": 8,
+   "eligible": false
+  },
+  {
+   "openalex": "A5058252389",
+   "name": "Giuseppe Caire",
+   "jsac_twc_papers": 67,
+   "h_index": 82,
+   "comst_papers": 1,
+   "eligible": false
+  },
+  {
+   "openalex": "A5022649488",
+   "name": "Dong In Kim",
+   "jsac_twc_papers": 65,
+   "h_index": 82,
+   "comst_papers": 15,
+   "eligible": false
+  },
+  {
+   "openalex": "A5057916222",
+   "name": "Mohsen Guizani",
+   "jsac_twc_papers": 65,
+   "h_index": 131,
+   "comst_papers": 21,
+   "eligible": false
+  },
+  {
+   "openalex": "A5061744244",
+   "name": "George K. Karagiannidis",
+   "jsac_twc_papers": 64,
+   "h_index": 91,
+   "comst_papers": 8,
+   "eligible": false
+  },
+  {
+   "openalex": "A5100697614",
+   "name": "Inkyu Lee",
+   "jsac_twc_papers": 63,
+   "h_index": 53,
+   "comst_papers": 0,
+   "eligible": false
+  },
+  {
+   "openalex": "A5005072193",
+   "name": "Chunxiao Jiang",
+   "jsac_twc_papers": 62,
+   "h_index": 77,
+   "comst_papers": 5,
+   "eligible": false
+  },
+  {
+   "openalex": "A5030334551",
+   "name": "Christos Masouros",
+   "jsac_twc_papers": 62,
+   "h_index": 61,
+   "comst_papers": 3,
+   "eligible": false
+  },
+  {
+   "openalex": "A5100656619",
+   "name": "Nan Zhao",
+   "jsac_twc_papers": 62,
+   "h_index": 74,
+   "comst_papers": 3,
+   "eligible": false
+  },
+  {
+   "openalex": "A5004181029",
+   "name": "Jiandong Li",
+   "jsac_twc_papers": 61,
+   "h_index": 51,
+   "comst_papers": 2,
+   "eligible": false
+  },
+  {
+   "openalex": "A5016883501",
+   "name": "Den\u0131z G\u00fcnd\u00fcz",
+   "jsac_twc_papers": 61,
+   "h_index": 68,
+   "comst_papers": 1,
+   "eligible": false
+  },
+  {
+   "openalex": "A5024436944",
+   "name": "Chao-Kai Wen",
+   "jsac_twc_papers": 61,
+   "h_index": 56,
+   "comst_papers": 0,
+   "eligible": false
+  },
+  {
+   "openalex": "A5062293532",
+   "name": "Emil Bj\u00f6rnson",
+   "jsac_twc_papers": 61,
+   "h_index": 86,
+   "comst_papers": 4,
+   "eligible": false
+  },
+  {
+   "openalex": "A5063946480",
+   "name": "Xiaojun Yuan",
+   "jsac_twc_papers": 61,
+   "h_index": 44,
+   "comst_papers": 0,
+   "eligible": false
+  },
+  {
+   "openalex": "A5100382658",
+   "name": "Xiaodong Wang",
+   "jsac_twc_papers": 61,
+   "h_index": 82,
+   "comst_papers": 0,
+   "eligible": false
+  },
+  {
+   "openalex": "A5080037825",
+   "name": "Bj\u00f6rn Ottersten",
+   "jsac_twc_papers": 60,
+   "h_index": 93,
+   "comst_papers": 6,
+   "eligible": false
+  },
+  {
+   "openalex": "A5081018704",
+   "name": "Naofal Al\u2010Dhahir",
+   "jsac_twc_papers": 60,
+   "h_index": 70,
+   "comst_papers": 2,
+   "eligible": false
+  }
+ ],
+ "comparison": {
+  "jin": {
+   "openalex": "A5013079905",
+   "name": "Shi Hong Jin",
+   "jsac_twc_papers": 154,
+   "h_index": 99,
+   "comst_papers": 4,
+   "eligible": true
+  },
+  "ng": {
+   "openalex": "A5006080984",
+   "name": "Derrick Wing Kwan Ng",
+   "jsac_twc_papers": 142,
+   "h_index": 104,
+   "comst_papers": 3,
+   "eligible": true
+  },
+  "ding": {
+   "openalex": "A5002904166",
+   "name": "Zhiguo Ding",
+   "jsac_twc_papers": 129,
+   "h_index": 119,
+   "comst_papers": 4,
+   "eligible": true
+  },
+  "liang": {
+   "openalex": "A5007832415",
+   "name": "Ying\u2010Chang Liang",
+   "jsac_twc_papers": 92,
+   "h_index": 112,
+   "comst_papers": 4,
+   "eligible": true
+  },
+  "heath": {
+   "openalex": "A5029812222",
+   "name": "Robert W. Heath",
+   "jsac_twc_papers": 83,
+   "h_index": 133,
+   "comst_papers": 1,
+   "eligible": true
+  }
+ },
+ "survey": {
+  "hanzo": {
+   "openalex": "A5091122305"
+  },
+  "niyato": {
+   "openalex": "A5091266202"
+  },
+  "yu": {
+   "openalex": "A5100420016"
+  },
+  "han": {
+   "openalex": "A5063667378"
+  },
+  "hossain": {
+   "openalex": "A5089270885"
+  }
+ }
+}
