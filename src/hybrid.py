@@ -67,7 +67,7 @@ def build_features(df: pd.DataFrame, survey_proba: np.ndarray, use_refs: bool = 
 def best_f1_threshold(y_true: np.ndarray, scores: np.ndarray) -> float:
     """Threshold on P(survey) that maximizes survey-class F1."""
     best_t, best_f1 = 0.5, -1.0
-    for t in np.linspace(0.05, 0.95, 91):
+    for t in np.linspace(0.01, 0.99, 99):
         pred = scores >= t
         tp = np.sum(pred & (y_true == 1))
         fp = np.sum(pred & (y_true == 0))

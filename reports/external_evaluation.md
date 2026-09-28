@@ -6,13 +6,14 @@ Test set: `data/kaggle_arxiv_test.csv` — text (title, abstract) from the Kaggl
 
 | Method                                                        | Acc.   | Prec.   | Recall   | F1    | F1 95% CI   | ΔF1 vs DistilBERT (95% CI)   | Prec. at 7.3% surveys   |
 |---------------------------------------------------------------|--------|---------|----------|-------|-------------|------------------------------|-------------------------|
-| Keyword only (title)                                          | 61.5%  | 100.0%  | 23.1%    | 37.5% | 32.7%–42.6% | -54.6 (-59.4 to -49.5)       | 100.0%                  |
-| TF-IDF + SVM                                                  | 88.7%  | 98.2%   | 78.8%    | 87.4% | 85.0%–89.6% | -4.6 (-6.7 to -2.7)          | 81.1%                   |
-| DistilBERT only                                               | 92.4%  | 96.4%   | 88.0%    | 92.0% | 90.2%–93.8% |                              | 67.8%                   |
-| Hybrid (OR, paper)                                            | 92.5%  | 96.4%   | 88.2%    | 92.1% | 90.4%–93.9% | +0.1 (+0.0 to +0.4)          | 67.8%                   |
-| Learned hybrid (title+abstract)                               | 91.9%  | 97.2%   | 86.2%    | 91.4% | 89.5%–93.2% | -0.7 (-1.6 to +0.2)          | 73.3%                   |
-| Learned hybrid (+ reference count)                            | 92.2%  | 96.6%   | 87.4%    | 91.8% | 89.9%–93.5% | -0.3 (-1.2 to +0.6)          | 69.0%                   |
-| Earlier model: distilbert_survey_model_synthetic (OR, th=0.8) | 69.3%  | 87.0%   | 45.4%    | 59.6% | 55.4%–63.6% | -32.4 (-36.6 to -28.1)       | 34.4%                   |
+| Keyword only (title)                                          | 61.5%  | 100.0%  | 23.1%    | 37.5% | 32.7%–42.6% | -54.5 (-59.5 to -49.5)       | 100.0%                  |
+| TF-IDF + SVM                                                  | 88.7%  | 98.2%   | 78.8%    | 87.4% | 85.0%–89.6% | -4.6 (-6.7 to -2.6)          | 81.1%                   |
+| DistilBERT only                                               | 92.4%  | 96.6%   | 87.8%    | 92.0% | 90.2%–93.8% |                              | 69.1%                   |
+| Hybrid (OR, paper)                                            | 92.5%  | 96.6%   | 88.0%    | 92.1% | 90.4%–93.9% | +0.1 (+0.0 to +0.4)          | 69.2%                   |
+| Learned hybrid (title+abstract)                               | 91.9%  | 97.2%   | 86.2%    | 91.4% | 89.5%–93.2% | -0.6 (-1.5 to +0.2)          | 73.3%                   |
+| Learned hybrid (+ reference count)                            | 92.2%  | 96.6%   | 87.4%    | 91.8% | 89.9%–93.5% | -0.2 (-1.2 to +0.7)          | 69.0%                   |
+| Indexer type ('Review')                                       | 60.8%  | 100.0%  | 21.6%    | 35.6% | 30.7%–40.4% | -56.4 (-61.6 to -51.3)       | 100.0%                  |
+| Earlier model: distilbert_survey_model_synthetic (OR, th=0.8) | 69.3%  | 87.0%   | 45.4%    | 59.6% | 55.4%–63.6% | -32.4 (-36.6 to -28.0)       | 34.4%                   |
 
 ## Recall on surveys per venue (title + abstract)
 
@@ -33,7 +34,7 @@ Test set: `data/kaggle_arxiv_test.csv` — text (title, abstract) from the Kaggl
 | Foundations and Trends in Information Retrieval                 |        11 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
 | Foundations and Trends in Optimization                          |        11 | 81.8%             | 81.8%                | 72.7%                             | 72.7%                                |
 | Foundations and Trends in Robotics                              |        10 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
-| Foundations and Trends in Theoretical Computer Science          |         8 | 100.0%            | 100.0%               | 75.0%                             | 87.5%                                |
+| Foundations and Trends in Theoretical Computer Science          |         8 | 87.5%             | 87.5%                | 75.0%                             | 87.5%                                |
 | Foundations and Trends in Databases                             |         4 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
 | Foundations and Trends in Networking                            |         4 | 100.0%            | 100.0%               | 100.0%                            | 100.0%                               |
 | Foundations and Trends in Privacy and Security                  |         4 | 100.0%            | 100.0%               | 75.0%                             | 75.0%                                |
@@ -50,18 +51,19 @@ Test set: `data/kaggle_arxiv_test.csv` — text (title, abstract) from the Kaggl
 | biomed  |       72 | 97.3%             | 97.3%                | 100.0%                            | 100.0%                               |
 | comm    |       78 | 92.1%             | 92.1%                | 89.2%                             | 90.7%                                |
 | control |      254 | 89.3%             | 89.3%                | 89.3%                             | 89.7%                                |
-| ml      |      376 | 92.8%             | 92.8%                | 91.9%                             | 91.7%                                |
+| ml      |      376 | 93.1%             | 93.1%                | 91.9%                             | 91.7%                                |
 | stats   |      166 | 90.6%             | 91.2%                | 90.4%                             | 91.2%                                |
-| theory  |       24 | 100.0%            | 100.0%               | 90.9%                             | 95.7%                                |
+| theory  |       24 | 95.7%             | 95.7%                | 90.9%                             | 95.7%                                |
 
 ## Test set — title only (n = 970, 485 surveys)
 
 | Method                                                        | Acc.   | Prec.   | Recall   | F1    | F1 95% CI   | ΔF1 vs DistilBERT (95% CI)   | Prec. at 7.3% surveys   |
 |---------------------------------------------------------------|--------|---------|----------|-------|-------------|------------------------------|-------------------------|
-| Keyword only (title)                                          | 61.5%  | 100.0%  | 23.1%    | 37.5% | 32.7%–42.6% | -40.1 (-44.9 to -35.1)       | 100.0%                  |
-| TF-IDF + SVM                                                  | 71.6%  | 83.4%   | 54.0%    | 65.6% | 61.7%–69.3% | -11.9 (-15.3 to -8.4)        | 28.4%                   |
-| DistilBERT only                                               | 80.3%  | 90.2%   | 68.0%    | 77.6% | 74.4%–80.5% |                              | 41.9%                   |
-| Hybrid (OR, paper)                                            | 80.3%  | 90.2%   | 68.0%    | 77.6% | 74.4%–80.5% | +0.0 (+0.0 to +0.0)          | 41.9%                   |
-| Learned hybrid (title+abstract)                               | 80.0%  | 91.2%   | 66.4%    | 76.8% | 73.6%–79.8% | -0.7 (-1.7 to +0.2)          | 45.0%                   |
-| Learned hybrid (+ reference count)                            | 80.9%  | 89.9%   | 69.7%    | 78.5% | 75.3%–81.4% | +1.0 (-0.4 to +2.4)          | 41.2%                   |
-| Earlier model: distilbert_survey_model_synthetic (OR, th=0.8) | 65.5%  | 95.7%   | 32.4%    | 48.4% | 43.4%–53.3% | -29.2 (-33.8 to -24.6)       | 63.8%                   |
+| Keyword only (title)                                          | 61.5%  | 100.0%  | 23.1%    | 37.5% | 32.7%–42.6% | -39.6 (-44.6 to -34.7)       | 100.0%                  |
+| TF-IDF + SVM                                                  | 71.6%  | 83.4%   | 54.0%    | 65.6% | 61.7%–69.3% | -11.5 (-14.9 to -8.0)        | 28.4%                   |
+| DistilBERT only                                               | 80.1%  | 90.8%   | 67.0%    | 77.1% | 73.8%–80.1% |                              | 43.7%                   |
+| Hybrid (OR, paper)                                            | 80.1%  | 90.8%   | 67.0%    | 77.1% | 73.8%–80.1% | +0.0 (+0.0 to +0.0)          | 43.7%                   |
+| Learned hybrid (title+abstract)                               | 80.0%  | 91.2%   | 66.4%    | 76.8% | 73.6%–79.8% | -0.3 (-0.8 to +0.3)          | 45.0%                   |
+| Learned hybrid (+ reference count)                            | 80.9%  | 89.9%   | 69.7%    | 78.5% | 75.3%–81.4% | +1.4 (+0.0 to +2.9)          | 41.2%                   |
+| Indexer type ('Review')                                       | 60.8%  | 100.0%  | 21.6%    | 35.6% | 30.7%–40.4% | -41.5 (-47.1 to -35.7)       | 100.0%                  |
+| Earlier model: distilbert_survey_model_synthetic (OR, th=0.8) | 65.5%  | 95.7%   | 32.4%    | 48.4% | 43.4%–53.3% | -28.7 (-33.3 to -24.3)       | 63.8%                   |

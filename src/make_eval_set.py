@@ -102,7 +102,7 @@ def make_eval_set(
     sample_sizes = sample["Stratum"].value_counts()
     sample["StratumWeight"] = sample["Stratum"].map(pool_sizes / sample_sizes).round(3)
 
-    cols = ["id", "title", "abstract", "venue", "year", "citationCount", "ReferenceCount",
+    cols = ["id", "title", "abstract", "venue", "type", "year", "citationCount", "ReferenceCount",
             "SourceFile", "Stratum", "StratumWeight"]
     out = sample[[c for c in cols if c in sample.columns]].rename(columns={"title": "Title", "abstract": "Abstract"})
     out["Label"] = ""   # 0 = survey/review/tutorial, 1 = original research, 'skip' = not a paper

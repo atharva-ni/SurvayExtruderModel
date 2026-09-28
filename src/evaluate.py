@@ -47,10 +47,69 @@ def metrics(y_true, y_pred, weights=None) -> dict:
     return out
 
 
+N_BOOT = 2000
+STRATUM_DEFINITIONS = {
+    "title_kw": "survey term in the title",
+    "abstract_cue": "survey phrasing in the abstract, none in the title",
+    "random": "everything else",
+}
+
+
+def rw_prec_rec_rate(y, p, w):
+    tp = np.sum(w * ((y == 1) & (p == 1)))
+    return (tp / max(1e-9, np.sum(w * (p == 1))), tp / max(1e-9, np.sum(w * (y == 1))),
+            np.sum(w * y) / np.sum(w))
+
+
+def stratified_bootstrap(y, preds: dict, w, strata, seed=42) -> dict:
+    """95% CIs of the reweighted precision / recall / survey rate, resampling within each stratum."""
+    rng = np.random.default_rng(seed)
+    groups = [np.flatnonzero(strata == s) for s in np.unique(strata)]
+    samples = [np.concatenate([rng.choice(g, size=len(g)) for g in groups]) for _ in range(N_BOOT)]
+    out = {}
+    for name, p in preds.items():
+        stats = np.array([rw_prec_rec_rate(y[i], p[i], w[i]) for i in samples])
+        out[name] = {"prec_rw_ci": np.percentile(stats[:, 0], [2.5, 97.5]).tolist(),
+                     "rec_rw_ci": np.percentile(stats[:, 1], [2.5, 97.5]).tolist(),
+                     "rate_ci": np.percentile(stats[:, 2], [2.5, 97.5]).tolist()}
+    return out
+
+
+def ci_str(ci) -> str:
+    return f"{100 * ci[0]:.0f}–{100 * ci[1]:.0f}%"
+
+
+def sampling_design(ev_all: pd.DataFrame, ev: pd.DataFrame) -> list:
+    """Per stratum: pool size in the profiles, papers sampled / labeled, surveys found, weight."""
+    rows = []
+    for stratum, g in ev_all.groupby("Stratum"):
+        weight = float(g["StratumWeight"].iloc[0])
+        labeled = ev[ev["Stratum"] == stratum]
+        rows.append({"stratum": stratum, "definition": STRATUM_DEFINITIONS.get(stratum, ""),
+                     "pool": int(round(weight * len(g))), "sampled": len(g), "labeled": len(labeled),
+                     "surveys": int((labeled["Label"] == "0").sum()), "weight": weight})
+    return rows
+
+
+def sampling_table(rows: list) -> str:
+    total_w = sum(r["weight"] * r["labeled"] for r in rows)
+    body = [[r["stratum"], r["definition"], r["pool"], r["sampled"], r["labeled"], r["surveys"], r["weight"],
+             f"{100 * r['weight'] * r['surveys'] / total_w:.1f}%"] for r in rows]
+    return (tabulate(body, headers=["Stratum", "Definition", "Pool", "Sampled", "Labeled", "Surveys", "Weight",
+                                    "Share of est. survey rate"], tablefmt="github") +
+            "\n\nPool = profile papers with an abstract of at least 30 words, deduplicated by title, not in the "
+            "training set. Weight = pool / sampled. Estimated survey rate = weighted surveys / weighted labeled papers.")
+
+
 def survey_proba_for(frame: pd.DataFrame, model_path: str) -> np.ndarray:
     tokenizer, model = load_model(model_path)
     texts = [paper_text(t, a) for t, a in zip(frame["Title"], frame["Abstract"])]
     return predict_survey_proba(texts, tokenizer, model, max_length=load_config(model_path).get("max_length", 384))
+
+
+def indexer_is_review(frame: pd.DataFrame) -> np.ndarray:
+    """Baseline: the document type assigned by the indexer (OpenAlex / Semantic Scholar) says 'review'."""
+    return frame["Type"].str.contains(r"\breview\b", case=False, regex=True).astype(int).values
 
 
 def all_methods(frame, proba, model_path, svm, vectorizer, baseline=None) -> dict:
@@ -69,7 +128,10 @@ def all_methods(frame, proba, model_path, svm, vectorizer, baseline=None) -> dic
     }
     magazine_only = is_magazine_without_survey_signal(frame)
     if magazine_only.any():
+        preds["DistilBERT + magazine rule"] = preds["DistilBERT only"] * (~magazine_only)
         preds["Learned hybrid + magazine rule"] = preds["Learned hybrid (+ reference count)"] * (~magazine_only)
+    if (frame["Type"].str.strip() != "").any():
+        preds["Indexer type ('Review')"] = indexer_is_review(frame)
     if baseline is not None:
         name, base_proba, base_threshold = baseline
         preds[name] = or_rule(base_proba, frame["Title"], base_threshold)
@@ -93,13 +155,32 @@ def author_impact(authors_glob: str, model_path: str) -> pd.DataFrame:
     effect of excluding them as well.
     """
     combiner = LearnedHybrid.load(model_path)
-    rows = []
+    threshold = load_config(model_path)["threshold"]
+    rows, comparison = [], {}
     for path in sorted(glob.glob(authors_glob)):
         df = pd.read_csv(path)
         df["citationCount"] = df["citationCount"].fillna(0).astype(int)
         frame = prepare_frame(df)
         proba = survey_proba_for(frame, model_path)
-        category = categorize(frame, combiner.predict(frame, proba, use_refs=True))
+        hybrid = combiner.predict(frame, proba, use_refs=True)
+        category = categorize(frame, hybrid)
+
+        # Same profile, other methods: which papers each one would exclude
+        bert = (proba >= threshold).astype(int)
+        excluded_by = {
+            "DistilBERT only (no rules)": bert == 1,
+            "DistilBERT + rules": categorize(frame, bert) == "survey",
+            "Learned hybrid (no rules)": hybrid == 1,
+            "Learned hybrid + rules (main)": category == "survey",
+            "Indexer type ('Review')": indexer_is_review(frame) == 1,
+        }
+        h0, _ = calculate_indices(df)
+        for method, mask in excluded_by.items():
+            comparison.setdefault(method, {})[os.path.basename(path)] = {
+                "excluded": 100 * mask.mean(),
+                "citations": 100 * df.loc[mask, "citationCount"].sum() / max(1, df["citationCount"].sum()),
+                "h_drop": h0 - calculate_indices(df[~mask])[0],
+            }
 
         survey = category == "survey"
         survey_or_magazine = survey | (category == "magazine-overview")
@@ -132,7 +213,22 @@ def author_impact(authors_glob: str, model_path: str) -> pd.DataFrame:
                     "Citation reduction (+ magazine)", "h-index drop (+ magazine)"):
             avg[col] = table[col].mean()
         table = pd.concat([table, pd.DataFrame([avg])], ignore_index=True)
-    return table
+    return table, comparison
+
+
+def method_comparison_table(comparison: dict) -> str:
+    """Table IV(b): average share of papers / citations excluded and h-index drop per method."""
+    files = list(next(iter(comparison.values())).keys())
+    rows = []
+    for method, per_author in comparison.items():
+        vals = list(per_author.values())
+        rows.append([method,
+                     f"{np.mean([v['excluded'] for v in vals]):.1f}%",
+                     f"{np.mean([v['citations'] for v in vals]):.1f}%",
+                     f"{np.mean([v['h_drop'] for v in vals]):.1f}"] +
+                    [per_author[f]["h_drop"] for f in files])
+    headers = ["Method", "Papers excluded", "Citations", "Δh (avg)"] + [f"Δh {os.path.splitext(f)[0]}" for f in files]
+    return tabulate(rows, headers=headers, tablefmt="github")
 
 
 def run_evaluation(
@@ -186,8 +282,8 @@ def run_evaluation(
 
     # ---- (b) Hand-labeled author-profile set ----
     if eval_set and os.path.exists(eval_set):
-        ev = pd.read_csv(eval_set, dtype={"Label": str})
-        ev = ev[ev["Label"].isin(["0", "1"])].reset_index(drop=True)
+        ev_all = pd.read_csv(eval_set, dtype={"Label": str})
+        ev = ev_all[ev_all["Label"].isin(["0", "1"])].reset_index(drop=True)
         if len(ev):
             print(f"📊 Evaluating on the hand-labeled set ({len(ev)} papers)...")
             frame = prepare_frame(ev)
@@ -196,6 +292,11 @@ def run_evaluation(
             preds = all_methods(frame, survey_proba_for(frame, model_path), model_path, svm, vectorizer,
                                 baseline_for(frame))
             rows = {name: metrics(y, p, w) for name, p in preds.items()}
+            if w is not None:
+                cis = stratified_bootstrap(y, preds, w, ev["Stratum"].values)
+                for name in preds:
+                    rows[name].update(cis[name])
+                results["hand_labeled_sampling"] = sampling_design(ev_all, ev)
 
             confident = ev["Confidence"].isin(["H", "M"]).values if "Confidence" in ev.columns else None
             if confident is not None:
@@ -208,17 +309,30 @@ def run_evaluation(
                      "rec_reweighted": "Recall (rw)", "survey_rate_pred": "Flagged (rw)"}
             extra = [c for c in names if c in next(iter(rows.values()))]
             headers = ["Method", "Acc.", "Prec.", "Recall", "F1"] + [names[c] for c in extra]
+            table = fmt_table(rows, extra)
+            if w is not None:
+                headers += ["Prec. (rw) 95% CI", "Recall (rw) 95% CI"]
+                for row, m in zip(table, rows.values()):
+                    row += [ci_str(m["prec_rw_ci"]), ci_str(m["rec_rw_ci"])]
+            first = next(iter(rows.values()))
+            rate = f"{100 * first.get('survey_rate_true', 0):.1f}%"
+            if w is not None:
+                rate += f" (95% CI {ci_str(first['rate_ci'])})"
             sections.append((
                 f"Table II(b) — hand-labeled author-profile papers (n = {len(y)}, {y.sum()} surveys; labels: {labeled_by})",
-                tabulate(fmt_table(rows, extra), headers=headers, tablefmt="github") +
+                tabulate(table, headers=headers, tablefmt="github") +
                 "\n\n(rw) = reweighted by sampling stratum to the real mix of papers in the profiles; "
-                f"estimated true survey rate: {100 * next(iter(rows.values())).get('survey_rate_true', 0):.1f}%"))
+                f"estimated true survey rate: {rate}. CIs: {N_BOOT} bootstrap resamples within each stratum."))
+            if w is not None:
+                sections.append(("Sampling design of the hand-labeled set",
+                                 sampling_table(results["hand_labeled_sampling"])))
 
     # ---- Table IV ----
     if authors_glob and glob.glob(authors_glob):
         print("📊 Recalculating author metrics (Table IV)...")
-        table = author_impact(authors_glob, model_path)
+        table, comparison = author_impact(authors_glob, model_path)
         results["author_impact"] = table.to_dict(orient="records")
+        results["author_impact_by_method"] = comparison
         show = table.drop(columns=["File"]).copy()
         for col in ("Papers excluded", "Citation reduction", "i10-index reduction", "Citation reduction (+ magazine)"):
             show[col] = show[col].map(lambda v: f"{v:.2f}%")
@@ -228,6 +342,10 @@ def run_evaluation(
                          tabulate(show.values.tolist(), headers=list(show.columns), tablefmt="github") +
                          "\n\nBooks/editorials are not counted as surveys. '(+ magazine)' also excludes magazine "
                          "articles that the classifier flagged but that do not present themselves as surveys."))
+        sections.append(("Table IV(b) — the same profiles, papers excluded by each method (averages over authors)",
+                         method_comparison_table(comparison) +
+                         "\n\n'Rules' = title-only, non-paper and magazine rules (Section III-A.4); 'no rules' "
+                         "excludes every paper the classifier flags."))
 
     # ---- Report ----
     os.makedirs(report_dir, exist_ok=True)

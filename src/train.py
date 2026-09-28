@@ -7,7 +7,7 @@ DistilBERT Survey Classifier Training
      A share of training papers is shown with the title only, because many
      papers in author profiles have no abstract.
   3. Choose the DistilBERT decision threshold on the validation split
-     (with and without abstracts).
+     (with and without abstracts), searching 0.01-0.99.
   4. Fit the learned hybrid combiner on the same validation data.
 The split is saved with the model (data_split.csv) so evaluation reuses it.
 """
@@ -252,6 +252,32 @@ def run_training(dataset_path, output_dir="./distilbert_survey_model", epochs=3,
     print("✅ Training complete.")
 
 
+# -------------------- Re-select thresholds without retraining -------------------- #
+def retune_thresholds(model_dir="./distilbert_survey_model", seed=42):
+    """Re-run threshold selection and the combiner fit on the saved validation split (model weights unchanged)."""
+    from inference import load_model, load_config
+    split = pd.read_csv(os.path.join(model_dir, SPLIT_FILE))
+    val_df = split[split["Split"] == "val"].copy()
+    val_df["Abstract"] = val_df["Abstract"].fillna("")
+    val_df["Text"] = [paper_text(t, a) for t, a in zip(val_df["Title"], val_df["Abstract"])]
+    tokenizer, model = load_model(model_dir)
+
+    val_both = with_title_only_copies(val_df)
+    val_proba = predict_survey_proba(val_both["Text"].tolist(), tokenizer, model)
+    val_is_survey = (val_both["Label"].values == SURVEY_LABEL).astype(int)
+
+    config = load_config(model_dir)
+    old_threshold, old_combiner = config["threshold"], LearnedHybrid.load(model_dir)
+    config["threshold"] = best_f1_threshold(val_is_survey, val_proba)
+    combiner = LearnedHybrid().fit(val_both, val_proba, val_is_survey, seed=seed)
+
+    print(f"DistilBERT threshold: {old_threshold:.2f} -> {config['threshold']:.2f}")
+    print(f"Hybrid threshold:     {old_combiner.threshold:.2f} -> {combiner.threshold:.2f}")
+    print(f"Hybrid coefficients:  {old_combiner.coefficients()} -> {combiner.coefficients()}")
+    save_config(model_dir, config)
+    combiner.save(model_dir)
+
+
 # -------------------- Hyperparameter tuning -------------------- #
 def run_tuning(dataset_path, n_trials=5, seed=42):
     """Optuna search on the train/validation splits only; the test split is untouched."""
@@ -295,9 +321,13 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=2e-5)
     parser.add_argument("--tune", action="store_true")
     parser.add_argument("--trials", type=int, default=5)
+    parser.add_argument("--retune-thresholds", action="store_true",
+                        help="Re-select the thresholds of a trained model on its validation split")
     args = parser.parse_args()
 
-    if args.tune:
+    if args.retune_thresholds:
+        retune_thresholds(args.output_dir)
+    elif args.tune:
         run_tuning(args.dataset, n_trials=args.trials)
     else:
         run_training(args.dataset, args.output_dir, args.epochs, args.batch_size, args.lr)
