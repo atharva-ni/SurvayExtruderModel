@@ -53,8 +53,10 @@ cp .env.example .env                # add an OpenAlex API key (free) and, option
 python -m pytest tests              # unit tests (no model needed)
 ```
 
-The trained model (about 260 MB) is not stored in this repository. Train it with `python main.py train`
-(DistilBERT, then the learned hybrid); it is saved to `distilbert_survey_model/`.
+The trained model used in the paper (about 260 MB) is not stored in this repository. Download
+`distilbert_survey_model.zip` from the [v1.0 release](https://github.com/atharva-ni/SurveyExcluderModel/releases/tag/v1.0)
+and unzip it in the repository root, or train it yourself with `python main.py train` (DistilBERT, then the learned
+hybrid); either way it ends up in `distilbert_survey_model/`.
 
 ## Usage
 
