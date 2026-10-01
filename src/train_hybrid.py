@@ -1,14 +1,14 @@
 """
-Fit the learned hybrid (src/combiner.py) and cross-validate it on author profiles
-===============================================================================
-    python main.py train-combiner                # fit and save to the model directory
-    python main.py train-combiner --cv 5         # also save repeated 10-fold CV predictions for the
-                                                 # hand-labeled papers (used by the evaluation)
+Fit the learned hybrid (src/learned_hybrid.py) and cross-validate it on author profiles
+=======================================================================================
+    python main.py train --hybrid-only          # fit and save to the model directory
+    python main.py train --hybrid-only --cv 5   # also save repeated 10-fold CV predictions for the
+                                                # hand-labeled papers (used by the evaluation)
 
 Sources: the validation split (title only), LLM-labeled profile
 papers (data/llm_labels.csv), and hand-labeled profile papers (data/eval_to_label.csv).
 In cross-validation the hand-labeled papers are split into 10 folds; each fold is
-predicted by a combiner fitted on the other sources plus the remaining nine folds,
+predicted by a hybrid fitted on the other sources plus the remaining nine folds,
 with C and the threshold chosen inside those nine folds (nested).
 """
 
@@ -21,14 +21,14 @@ import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 
 from classifier import prepare_frame
-from combiner import SurveyCombiner, cls_embeddings, combiner_features, weighted_prec_rec
+from learned_hybrid import LearnedHybrid, cls_embeddings, hybrid_features, weighted_prec_rec
 from inference import load_model, load_config, predict_survey_proba
 from text_utils import paper_text
 from train import SPLIT_FILE
 
 LLM_CSV = "data/llm_labels.csv"
 EVAL_CSV = "data/eval_to_label.csv"
-CV_FILE = "combiner_cv_predictions.json"
+CV_FILE = "combiner_cv_predictions.json"  # file name kept so existing models still load
 VALIDATION_SHARE = 0.25
 
 
@@ -39,12 +39,12 @@ def _proba(frame, model_path):
 
 
 def matrix(frame, model_path):
-    return combiner_features(frame, _proba(frame, model_path), cls_embeddings(frame, model_path))
+    return hybrid_features(frame, _proba(frame, model_path), cls_embeddings(frame, model_path))
 
 
 def load_sources(model_path: str, llm_csv: str = LLM_CSV, eval_csv: str = EVAL_CSV) -> dict:
     split = pd.read_csv(os.path.join(model_path, SPLIT_FILE))
-    # Title-only copies of the validation split teach the combiner records without an abstract,
+    # Title-only copies of the validation split teach the hybrid records without an abstract,
     # which the profile papers (all with abstracts) do not cover
     val = split[split["Split"] == "val"].reset_index(drop=True).assign(Abstract="")
     llm = pd.read_csv(llm_csv, dtype={"Label": str})
@@ -52,7 +52,7 @@ def load_sources(model_path: str, llm_csv: str = LLM_CSV, eval_csv: str = EVAL_C
     hand = pd.read_csv(eval_csv, dtype={"Label": str})
     hand = hand[hand["Label"].isin(["0", "1"])].reset_index(drop=True)
 
-    print(f"Combiner sources: {len(val)} validation rows, {len(llm)} LLM-labeled, {len(hand)} hand-labeled")
+    print(f"Learned hybrid training data: {len(val)} validation rows, {len(llm)} LLM-labeled, {len(hand)} hand-labeled")
     X_val, X_llm, X_hand = (matrix(prepare_frame(d), model_path) for d in (val, llm, hand))
     y_val = (val["Label"] == 0).astype(int).values
     y_llm = (llm["Label"] == "0").astype(int).values
@@ -77,27 +77,27 @@ def cross_validate(src: dict, reps: int = 5, seed: int = 42) -> np.ndarray:
     out = np.zeros((reps, len(y)), dtype=int)
     for r in range(reps):
         for tr, te in StratifiedKFold(10, shuffle=True, random_state=seed + r).split(X, groups):
-            comb = SurveyCombiner.fit_selected(src["X_fixed"], src["y_fixed"], src["w_fixed"],
-                                               X[tr], y[tr], w[tr], strata[tr], seed=seed)
-            out[r, te] = comb.predict(X[te])
+            hybrid = LearnedHybrid.fit_selected(src["X_fixed"], src["y_fixed"], src["w_fixed"],
+                                                X[tr], y[tr], w[tr], strata[tr], seed=seed)
+            out[r, te] = hybrid.predict(X[te])
         prec, rec = weighted_prec_rec(y, out[r], w)
         print(f"   CV repetition {r + 1}/{reps}: precision (rw) {100 * prec:.1f}%, recall (rw) {100 * rec:.1f}%")
     return out
 
 
-def run(model_path: str = "./distilbert_survey_model", cv: int = 0) -> SurveyCombiner:
+def run(model_path: str = "./distilbert_survey_model", cv: int = 0) -> LearnedHybrid:
     src = load_sources(model_path)
-    comb = SurveyCombiner.fit_selected(src["X_fixed"], src["y_fixed"], src["w_fixed"],
-                                       src["X_hand"], src["y_hand"], src["w_hand"], src["strata"])
-    comb.save(model_path)
-    print(f"Combiner saved (C = {comb.C}, threshold = {comb.threshold:.2f})")
+    hybrid = LearnedHybrid.fit_selected(src["X_fixed"], src["y_fixed"], src["w_fixed"],
+                                        src["X_hand"], src["y_hand"], src["w_hand"], src["strata"])
+    hybrid.save(model_path)
+    print(f"Learned hybrid saved (C = {hybrid.C}, threshold = {hybrid.threshold:.2f})")
     if cv:
         oof = cross_validate(src, reps=cv)
         path = os.path.join(model_path, CV_FILE)
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"ids": src["hand_ids"].tolist(), "predictions": oof.tolist()}, f)
         print(f"Cross-validated predictions saved to '{path}'")
-    return comb
+    return hybrid
 
 
 def main():

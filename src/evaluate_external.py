@@ -1,12 +1,13 @@
 """
 External evaluation on the Kaggle arXiv test set (unseen venues)
 ================================================================
-Runs every method from evaluate.py on data/kaggle_arxiv_test.csv (built by
-build_kaggle_test.py) and writes reports/external_evaluation.md / .json:
+Runs our two models (the learned hybrid, the main model, and the fine-tuned DistilBERT) and the other methods from evaluate.py on
+data/kaggle_arxiv_test.csv (built by build_kaggle_test.py) and writes
+reports/external_evaluation.md / .json:
 
   * accuracy, precision, recall, F1 with bootstrap 95% confidence intervals,
-  * precision expected at the survey rate of real author profiles (7.3%),
-  * the paired bootstrap difference in F1 between each hybrid and DistilBERT only,
+  * precision expected at the survey rate of real author profiles,
+  * the paired bootstrap difference in F1 between each other method and the learned hybrid,
   * recall on surveys per venue and results per topic group.
 """
 
@@ -23,7 +24,7 @@ from tabulate import tabulate
 
 from text_utils import paper_text
 from classifier import prepare_frame
-from evaluate import metrics, all_methods, survey_proba_for
+from evaluate import metrics, all_methods, survey_proba_for, MAIN, DISTILBERT
 from train import SPLIT_FILE
 
 PROFILE_SURVEY_RATE = 0.080  # estimated survey rate of author-profile papers (reports/evaluation.md)
@@ -60,7 +61,7 @@ def pct(v) -> str:
     return f"{100 * v:.1f}%"
 
 
-def run(test_csv: str, model_path: str, baseline_model: str, report_dir: str) -> dict:
+def run(test_csv: str, model_path: str, report_dir: str) -> dict:
     df = pd.read_csv(test_csv)
     y = (df["Label"] == 0).astype(int).values
 
@@ -70,20 +71,13 @@ def run(test_csv: str, model_path: str, baseline_model: str, report_dir: str) ->
     X_train = vectorizer.fit_transform([paper_text(t, a) for t, a in zip(train_df["Title"], train_df["Abstract"])])
     svm = LinearSVC(C=1.0).fit(X_train, (train_df["Label"] == 0).astype(int))
 
-    def baseline_for(frame):
-        if not baseline_model or not os.path.isdir(baseline_model):
-            return None
-        return (f"Earlier model: {os.path.basename(os.path.normpath(baseline_model))} (OR, th=0.8)",
-                survey_proba_for(frame, baseline_model), 0.8)
-
     results = {"date": str(date.today()), "test_set": test_csv, "n": len(y), "surveys": int(y.sum())}
     sections = []
     for variant, frame_df in (("title + abstract", df), ("title only", df.assign(Abstract=""))):
         print(f"📊 Evaluating ({variant}) on {len(y)} papers...")
         frame = prepare_frame(frame_df)
-        preds = all_methods(frame, survey_proba_for(frame, model_path), model_path, svm, vectorizer,
-                            baseline_for(frame))
-        boot = bootstrap(y, preds, reference="DistilBERT only")
+        preds = all_methods(frame, survey_proba_for(frame, model_path), model_path, svm, vectorizer)
+        boot = bootstrap(y, preds, reference=MAIN)
         rows = {}
         for name, p in preds.items():
             m = metrics(y, p)
@@ -94,15 +88,15 @@ def run(test_csv: str, model_path: str, baseline_model: str, report_dir: str) ->
 
         table = [[name, pct(m["acc"]), pct(m["prec"]), pct(m["rec"]), pct(m["f1"]),
                   f"{pct(m['f1_ci'][0])}–{pct(m['f1_ci'][1])}",
-                  "" if name == "DistilBERT only" else
+                  "" if name == MAIN else
                   f"{100 * m['diff_vs_ref']:+.1f} ({100 * m['diff_ci'][0]:+.1f} to {100 * m['diff_ci'][1]:+.1f})",
                   pct(m["prec_at_profile_rate"])] for name, m in rows.items()]
         sections.append((f"Test set — {variant} (n = {len(y)}, {y.sum()} surveys)", tabulate(
-            table, headers=["Method", "Acc.", "Prec.", "Recall", "F1", "F1 95% CI", "ΔF1 vs DistilBERT (95% CI)",
+            table, headers=["Method", "Acc.", "Prec.", "Recall", "F1", "F1 95% CI", "ΔF1 vs learned hybrid (95% CI)",
                             f"Prec. at {100 * PROFILE_SURVEY_RATE:.1f}% surveys"], tablefmt="github")))
 
         if variant == "title + abstract":
-            main = ["DistilBERT only", "Validation-fitted hybrid (+ reference count)", "Learned hybrid"]
+            main = [MAIN, DISTILBERT]
             by_venue = []
             for venue, g in df[df["Label"] == 0].groupby("Venue"):
                 i = g.index.values
@@ -138,7 +132,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--test", default="data/kaggle_arxiv_test.csv")
     parser.add_argument("--model", default="./distilbert_survey_model")
-    parser.add_argument("--baseline-model", default="./distilbert_survey_model_synthetic")
     parser.add_argument("--report-dir", default="reports")
     args = parser.parse_args()
-    run(args.test, args.model, args.baseline_model, args.report_dir)
+    run(args.test, args.model, args.report_dir)

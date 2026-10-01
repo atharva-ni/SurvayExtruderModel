@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Academic Paper Classification & Metrics Pipeline CLI",
+        description="Survey Excluder: detect survey papers with the learned hybrid and recalculate author metrics",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -18,20 +18,20 @@ Examples:
   # Extract a merged author profile from OpenAlex (needs OPENALEX_API_KEY for large profiles):
   python main.py extract --source openalex --name "Dusit Niyato" --output data/proauthor_openalex/niyato.csv
 
-  # Classify extracted papers (filter out surveys and compute indices):
+  # Classify extracted papers with the learned hybrid (filter out surveys and compute indices):
   python main.py classify --input data/proauthor_s2/niyato.csv
 
-  # Train the classifier (also fits the threshold and learned hybrid):
+  # Train the learned hybrid (fine-tunes DistilBERT, its first stage, then fits the hybrid):
   python main.py train --dataset data/real_dataset.csv
 
-  # Fit the learned hybrid and save its cross-validated predictions for the evaluation:
-  python main.py train-combiner --cv 5
+  # Refit only the hybrid, with 5 repetitions of nested cross-validation for the evaluation:
+  python main.py train --hybrid-only --cv 5
 
   # Tune hyperparameters using Optuna (train/validation splits only):
   python main.py train --dataset data/real_dataset.csv --tune --trials 3
 
   # Regenerate the evaluation reports:
-  python main.py evaluate --baseline-model ./distilbert_survey_model_synthetic
+  python main.py evaluate
 
   # Build a real labeled training dataset from OpenAlex:
   python main.py build-dataset --output data/real_dataset.csv
@@ -58,34 +58,27 @@ Examples:
     parser_classify.add_argument("--input", type=str, required=True, help="Input CSV file of publications (from the extract command)")
     parser_classify.add_argument("--output", type=str, help="Output CSV for original research papers (default: data/Non-Survey-Papers.csv)")
     parser_classify.add_argument("--surveys", type=str, help="Output CSV for surveys and non-papers (default: data/Survey-Papers.csv)")
-    parser_classify.add_argument("--model", type=str, default="./distilbert_survey_model", help="Path to fine-tuned model (default: ./distilbert_survey_model)")
+    parser_classify.add_argument("--model", type=str, default="./distilbert_survey_model", help="Trained learned-hybrid model directory (default: ./distilbert_survey_model)")
     parser_classify.add_argument("--batch-size", type=int, default=32, help="Batch size for model inference (default: 32)")
-    parser_classify.add_argument("--threshold", type=float, default=None, help="DistilBERT survey-probability threshold (default: tuned value saved with the model)")
-    parser_classify.add_argument("--mode", type=str, default="learned", choices=["learned", "validation-hybrid", "or", "model", "keyword"], help="learned hybrid (default), the earlier hybrid fitted on the validation split only, OR rule, DistilBERT only, or keywords only")
-    parser_classify.add_argument("--magazine-rule", action="store_true", default=None, help="Report magazine articles without survey framing separately (default for modes other than learned)")
-    parser_classify.add_argument("--exclude-magazine-overviews", action="store_true", help="With the magazine rule, also exclude those magazine articles")
 
     # ---- Train Subparser ----
-    parser_train = subparsers.add_parser("train", help="Train DistilBERT classifier or perform hyperparameter tuning")
+    parser_train = subparsers.add_parser("train", help="Train the learned hybrid (DistilBERT first stage, then the hybrid)")
     parser_train.add_argument("--dataset", type=str, default="data/real_dataset.csv", help="Path to training dataset CSV (default: data/real_dataset.csv)")
-    parser_train.add_argument("--output-dir", type=str, default="./distilbert_survey_model", help="Directory to save model weights")
-    parser_train.add_argument("--epochs", type=int, default=3, help="Number of training epochs (default: 3)")
-    parser_train.add_argument("--batch-size", type=int, default=16, help="Batch size (default: 16)")
-    parser_train.add_argument("--lr", type=float, default=2e-5, help="Learning rate (default: 2e-5)")
-    parser_train.add_argument("--tune", action="store_true", help="Perform hyperparameter search with Optuna instead of training")
+    parser_train.add_argument("--output-dir", type=str, default="./distilbert_survey_model", help="Model directory (default: ./distilbert_survey_model)")
+    parser_train.add_argument("--hybrid-only", action="store_true", help="Keep the trained DistilBERT stage and refit only the hybrid")
+    parser_train.add_argument("--cv", type=int, default=0, help="Repetitions of nested 10-fold cross-validation of the hybrid on the hand-labeled papers (0 = none)")
+    parser_train.add_argument("--epochs", type=int, default=3, help="DistilBERT training epochs (default: 3)")
+    parser_train.add_argument("--batch-size", type=int, default=16, help="DistilBERT batch size (default: 16)")
+    parser_train.add_argument("--lr", type=float, default=2e-5, help="DistilBERT learning rate (default: 2e-5)")
+    parser_train.add_argument("--tune", action="store_true", help="Hyperparameter search for the DistilBERT stage with Optuna instead of training")
     parser_train.add_argument("--trials", type=int, default=5, help="Number of tuning trials for Optuna (default: 5)")
-
-    # ---- Train Combiner Subparser ----
-    parser_comb = subparsers.add_parser("train-combiner", help="Fit the learned hybrid on the validation split and labeled author-profile papers")
-    parser_comb.add_argument("--model", type=str, default="./distilbert_survey_model", help="Trained model directory")
-    parser_comb.add_argument("--cv", type=int, default=0, help="Repetitions of nested 10-fold cross-validation on the hand-labeled papers (0 = none)")
 
     # ---- Evaluate Subparser ----
     parser_evaluate = subparsers.add_parser("evaluate", help="Regenerate the classification and author-impact reports")
     parser_evaluate.add_argument("--model", type=str, default="./distilbert_survey_model", help="Trained model directory")
     parser_evaluate.add_argument("--eval-set", type=str, default="data/eval_to_label.csv", help="Hand-labeled evaluation CSV")
-    parser_evaluate.add_argument("--authors", type=str, default="data/proauthor/*.csv", help="Glob of author profile CSVs for Table IV")
-    parser_evaluate.add_argument("--baseline-model", type=str, default=None, help="Optional older model to compare against")
+    parser_evaluate.add_argument("--authors", type=str, default="data/proauthor_s2/*.csv", help="Glob of author profile CSVs for Table IV")
+    parser_evaluate.add_argument("--comparison-authors", type=str, default=None, help="Glob of comparison-cohort profiles")
     parser_evaluate.add_argument("--report-dir", type=str, default="reports", help="Where to write evaluation.md/json")
 
     # ---- Build Dataset Subparser ----
@@ -147,10 +140,6 @@ Examples:
             survey_csv=survey_csv,
             model_path=args.model,
             batch_size=args.batch_size,
-            threshold=args.threshold,
-            mode=args.mode,
-            exclude_magazine_overviews=args.exclude_magazine_overviews,
-            magazine_rule=args.magazine_rule,
         )
 
     elif args.command == "train":
@@ -158,18 +147,17 @@ Examples:
             from train import run_tuning
             run_tuning(dataset_path=args.dataset, n_trials=args.trials)
         else:
-            from train import run_training
-            run_training(
-                dataset_path=args.dataset,
-                output_dir=args.output_dir,
-                epochs=args.epochs,
-                batch_size=args.batch_size,
-                lr=args.lr
-            )
-
-    elif args.command == "train-combiner":
-        from train_combiner import run as run_combiner
-        run_combiner(model_path=args.model, cv=args.cv)
+            if not args.hybrid_only:
+                from train import run_training
+                run_training(
+                    dataset_path=args.dataset,
+                    output_dir=args.output_dir,
+                    epochs=args.epochs,
+                    batch_size=args.batch_size,
+                    lr=args.lr
+                )
+            from train_hybrid import run as run_hybrid
+            run_hybrid(model_path=args.output_dir, cv=args.cv)
 
     elif args.command == "evaluate":
         from evaluate import run_evaluation
@@ -177,8 +165,8 @@ Examples:
             model_path=args.model,
             eval_set=args.eval_set,
             authors_glob=args.authors,
-            baseline_model=args.baseline_model,
-            report_dir=args.report_dir
+            report_dir=args.report_dir,
+            comparison_glob=args.comparison_authors,
         )
 
     elif args.command == "build-dataset":

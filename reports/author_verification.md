@@ -1,6 +1,6 @@
 # Author verification against Google Scholar
 
-Reference labels: S survey/tutorial/overview, M magazine overview (survey or magazine-overview accepted), R research (research or magazine-overview accepted), B book (must not be counted as a survey).
+Reference labels: S survey/tutorial/overview, M magazine overview (counts as a survey), R research, B book (must not be counted as a survey).
 
 ## Profile completeness
 
@@ -41,9 +41,9 @@ Items whose title is in the training set (`data/real_dataset.csv`) or among the 
 | hanzo    | Semantic Scholar (merged IDs) | 18/20                 | 9/10                        |
 | niyato   | Semantic Scholar (merged IDs) | 19/20                 | 5/5                         |
 | yu       | Semantic Scholar (merged IDs) | 15/16                 | 10/10                       |
-| han      | Semantic Scholar (merged IDs) | 19/19                 | 9/9                         |
-| hossain  | Semantic Scholar (merged IDs) | 16/19                 | 7/10                        |
-| Total    |                               | 87/94 (93%)           | 40/44 (91%)                 |
+| han      | Semantic Scholar (merged IDs) | 19/19                 | 8/8                         |
+| hossain  | Semantic Scholar (merged IDs) | 17/19                 | 8/10                        |
+| Total    |                               | 88/94 (94%)           | 40/43 (93%)                 |
 
 ## Details
 
@@ -126,7 +126,7 @@ Items whose title is in the training set (`data/real_dataset.csv`) or among the 
 | han      | R     | research       | ✓  |               | Fair multiuser channel allocation for OFDMA networks using Nash bargai |
 | han      | R     | research       | ✓  | yes           | When mobile blockchain meets edge computing                            |
 | han      | M     | survey         | ✓  | yes           | Federated learning for edge networks: Resource optimization and incent |
-| han      | S     | survey         | ✓  |               | Matching theory for future wireless networks: Fundamentals and applica |
+| han      | S     | survey         | ✓  | yes           | Matching theory for future wireless networks: Fundamentals and applica |
 | han      | S     | survey         | ✓  | yes           | Device fingerprinting in wireless networks: Challenges and opportuniti |
 | han      | R     | research       | ✓  |               | Hybrid beamforming for reconfigurable intelligent surface based multi- |
 | hossain  | B     | not in profile |    |               | Introduction to network simulator 2 (NS2)                              |
@@ -146,6 +146,6 @@ Items whose title is in the training set (`data/real_dataset.csv`) or among the 
 | hossain  | S     | survey         | ✓  | yes           | Machine learning for resource management in cellular and IoT networks: |
 | hossain  | R     | research       | ✓  |               | Resource allocation for spectrum underlay in cognitive radio networks  |
 | hossain  | S     | survey         | ✓  | yes           | Single and multi-agent deep reinforcement learning for AI-enabled wire |
-| hossain  | M     | research       | ✗  |               | Interference management in OFDMA femtocell networks: Issues and approa |
+| hossain  | M     | survey         | ✓  |               | Interference management in OFDMA femtocell networks: Issues and approa |
 | hossain  | R     | research       | ✓  |               | Resource allocation for device-to-device communications underlaying LT |
 | hossain  | B     | survey         | ✗  |               | Cognitive wireless communication networks                              |

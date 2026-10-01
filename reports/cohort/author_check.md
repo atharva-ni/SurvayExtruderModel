@@ -1,4 +1,4 @@
-# Cohort author records (2026-09-28)
+# Cohort author records (2026-09-29)
 
 One OpenAlex author record per person, used as is (no records merged). 'Outside field' = share of works whose primary field is not one of ['Computer Science', 'Decision Sciences', 'Engineering', 'Mathematics', 'Physics and Astronomy'].
 

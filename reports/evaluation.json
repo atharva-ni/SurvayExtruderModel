@@ -1,29 +1,26 @@
 {
   "date": "2026-09-29",
   "model": "E:\\Survay\\distilbert_survey_model",
-  "threshold": 0.9600000000000001,
-  "hybrid_coefficients": {
-    "bert_logit": 0.493,
-    "title_terms": 2.242,
-    "abstract_survey_cues": 1.404,
-    "abstract_research_cues": -0.298,
-    "abstract_missing": 0.262,
-    "log_refs": 0.807,
-    "refs_missing": 2.985
-  },
+  "distilbert_threshold": 0.9600000000000001,
   "learned_hybrid": {
     "C": 0.1,
-    "threshold": 0.74
+    "threshold": 0.73
   },
   "test_split": {
     "n": 1925,
     "surveys": 963,
     "results": {
-      "Keyword only (title)": {
-        "acc": 0.787012987012987,
-        "prec": 1.0,
-        "rec": 0.5742471443406023,
-        "f1": 0.7295514511873351
+      "Learned hybrid (ours)": {
+        "acc": 0.9355844155844156,
+        "prec": 0.9805269186712485,
+        "rec": 0.8888888888888888,
+        "f1": 0.9324618736383442
+      },
+      "Fine-tuned DistilBERT (ours)": {
+        "acc": 0.9532467532467532,
+        "prec": 0.9739413680781759,
+        "rec": 0.9314641744548287,
+        "f1": 0.9522292993630573
       },
       "TF-IDF + SVM": {
         "acc": 0.9475324675324676,
@@ -31,47 +28,29 @@
         "rec": 0.9283489096573209,
         "f1": 0.9465325569084172
       },
-      "DistilBERT only": {
-        "acc": 0.9532467532467532,
-        "prec": 0.9739413680781759,
-        "rec": 0.9314641744548287,
-        "f1": 0.9522292993630573
+      "Keyword only": {
+        "acc": 0.787012987012987,
+        "prec": 1.0,
+        "rec": 0.5742471443406023,
+        "f1": 0.7295514511873351
       },
-      "Hybrid (OR, paper)": {
-        "acc": 0.9532467532467532,
-        "prec": 0.9739413680781759,
-        "rec": 0.9314641744548287,
-        "f1": 0.9522292993630573
+      "Original tool": {
+        "acc": 0.8025974025974026,
+        "prec": 0.9561815336463224,
+        "rec": 0.6344755970924195,
+        "f1": 0.762796504369538
       },
-      "Validation-fitted hybrid (title+abstract)": {
-        "acc": 0.9490909090909091,
-        "prec": 0.9800221975582686,
-        "rec": 0.9169262720664589,
-        "f1": 0.9474248927038627
-      },
-      "Validation-fitted hybrid (+ reference count)": {
-        "acc": 0.9542857142857143,
-        "prec": 0.9781420765027322,
-        "rec": 0.9293873312564901,
-        "f1": 0.9531416400425985
-      },
-      "Learned hybrid": {
-        "acc": 0.935064935064935,
-        "prec": 0.9838337182448037,
-        "rec": 0.8847352024922118,
-        "f1": 0.931656642974303
-      },
-      "Indexer type ('Review')": {
+      "Indexer type (Review)": {
         "acc": 0.5215584415584416,
         "prec": 1.0,
         "rec": 0.04361370716510903,
         "f1": 0.08358208955223881
       },
-      "Baseline: distilbert_survey_model_synthetic (OR, th=0.8)": {
-        "acc": 0.7828571428571428,
-        "prec": 0.8789986091794159,
-        "rec": 0.656282450674974,
-        "f1": 0.751486325802616
+      "Smyth & Cunningham rule": {
+        "acc": 0.5215584415584416,
+        "prec": 1.0,
+        "rec": 0.04361370716510903,
+        "f1": 0.08358208955223881
       }
     }
   },
@@ -79,11 +58,17 @@
     "n": 1925,
     "surveys": 963,
     "results": {
-      "Keyword only (title)": {
-        "acc": 0.787012987012987,
-        "prec": 1.0,
-        "rec": 0.5742471443406023,
-        "f1": 0.7295514511873351
+      "Learned hybrid (ours)": {
+        "acc": 0.8690909090909091,
+        "prec": 0.9361963190184049,
+        "rec": 0.7923156801661475,
+        "f1": 0.8582677165354331
+      },
+      "Fine-tuned DistilBERT (ours)": {
+        "acc": 0.8872727272727273,
+        "prec": 0.9451073985680191,
+        "rec": 0.822429906542056,
+        "f1": 0.8795113825652415
       },
       "TF-IDF + SVM": {
         "acc": 0.8644155844155844,
@@ -91,70 +76,52 @@
         "rec": 0.8193146417445483,
         "f1": 0.8580750407830342
       },
-      "DistilBERT only": {
-        "acc": 0.8872727272727273,
-        "prec": 0.9451073985680191,
-        "rec": 0.822429906542056,
-        "f1": 0.8795113825652415
+      "Keyword only": {
+        "acc": 0.787012987012987,
+        "prec": 1.0,
+        "rec": 0.5742471443406023,
+        "f1": 0.7295514511873351
       },
-      "Hybrid (OR, paper)": {
-        "acc": 0.8872727272727273,
-        "prec": 0.9451073985680191,
-        "rec": 0.822429906542056,
-        "f1": 0.8795113825652415
+      "Original tool": {
+        "acc": 0.8025974025974026,
+        "prec": 0.9561815336463224,
+        "rec": 0.6344755970924195,
+        "f1": 0.762796504369538
       },
-      "Validation-fitted hybrid (title+abstract)": {
-        "acc": 0.8867532467532467,
-        "prec": 0.9482551143200962,
-        "rec": 0.818276220145379,
-        "f1": 0.8784838350055741
-      },
-      "Validation-fitted hybrid (+ reference count)": {
-        "acc": 0.9012987012987013,
-        "prec": 0.9499417927823051,
-        "rec": 0.8473520249221184,
-        "f1": 0.8957189901207464
-      },
-      "Learned hybrid": {
-        "acc": 0.8664935064935065,
-        "prec": 0.94125,
-        "rec": 0.7819314641744548,
-        "f1": 0.8542257515598412
-      },
-      "Indexer type ('Review')": {
+      "Indexer type (Review)": {
         "acc": 0.5215584415584416,
         "prec": 1.0,
         "rec": 0.04361370716510903,
         "f1": 0.08358208955223881
       },
-      "Baseline: distilbert_survey_model_synthetic (OR, th=0.8)": {
-        "acc": 0.7854545454545454,
-        "prec": 0.9270186335403726,
-        "rec": 0.6199376947040498,
-        "f1": 0.7429993777224643
+      "Smyth & Cunningham rule": {
+        "acc": 0.5215584415584416,
+        "prec": 1.0,
+        "rec": 0.04361370716510903,
+        "f1": 0.08358208955223881
       }
     }
   },
   "learned_hybrid_cv_repetitions": [
     {
-      "prec_rw": 0.7831542120762125,
+      "prec_rw": 0.9256295458940074,
       "rec_rw": 0.8301672847576105
     },
     {
-      "prec_rw": 0.7918088299427927,
+      "prec_rw": 0.8321964831465651,
+      "rec_rw": 0.7519209732931351
+    },
+    {
+      "prec_rw": 0.9114142711609161,
       "rec_rw": 0.8234972386008911
     },
     {
-      "prec_rw": 0.8981536715601404,
-      "rec_rw": 0.8234972386008911
+      "prec_rw": 0.8966046559718764,
+      "rec_rw": 0.7519209732931351
     },
     {
-      "prec_rw": 0.8445137592087172,
-      "rec_rw": 0.8234972386008911
-    },
-    {
-      "prec_rw": 0.9040321270909925,
-      "rec_rw": 0.8168271924441717
+      "prec_rw": 0.9187964152308398,
+      "rec_rw": 0.8301672847576105
     }
   ],
   "hand_labeled_sampling": [
@@ -191,29 +158,53 @@
     "surveys": 111,
     "labeled_by": "first author",
     "results": {
-      "Keyword only (title)": {
-        "acc": 0.7616099071207431,
-        "prec": 0.9722222222222222,
-        "rec": 0.3153153153153153,
-        "f1": 0.47619047619047616,
-        "acc_reweighted": 0.9380161466857801,
-        "prec_reweighted": 0.9722222222222222,
-        "rec_reweighted": 0.23345161548517915,
+      "Learned hybrid (ours)": {
+        "acc": 0.941795665634675,
+        "prec": 0.8981259370314841,
+        "rec": 0.9369369369369368,
+        "f1": 0.9171182410042492,
+        "acc_reweighted": 0.9764196790874273,
+        "prec_reweighted": 0.896928274280841,
+        "rec_reweighted": 0.7975347509404764,
         "survey_rate_true": 0.08016344522515692,
-        "survey_rate_pred": 0.019248979670404,
+        "survey_rate_pred": 0.07128314233176791,
+        "f1_confident": 0.9491813474815787,
         "prec_rw_ci": [
-          0.9117647058823529,
-          1.0
+          0.8374789735567937,
+          0.9474395684882966
         ],
         "rec_rw_ci": [
-          0.17022024303057925,
-          0.33121087785119735
+          0.641898322420945,
+          0.9646596353592942
+        ],
+        "rate_ci": [
+          0.058137800237297144,
+          0.10578811471750253
+        ]
+      },
+      "Fine-tuned DistilBERT (ours)": {
+        "acc": 0.8699690402476781,
+        "prec": 0.7315436241610739,
+        "rec": 0.9819819819819819,
+        "f1": 0.8384615384615385,
+        "acc_reweighted": 0.9411211140453923,
+        "prec_reweighted": 0.5841304595927787,
+        "rec_reweighted": 0.9217536885355245,
+        "survey_rate_true": 0.08016344522515692,
+        "survey_rate_pred": 0.12649734337345855,
+        "prec_rw_ci": [
+          0.44382637512205225,
+          0.7448114230738824
+        ],
+        "rec_rw_ci": [
+          0.783096353230592,
+          1.0
         ],
         "rate_ci": [
           0.058137800237297144,
           0.10578811471750253
         ],
-        "f1_confident": 0.5426356589147286
+        "f1_confident": 0.8792270531400966
       },
       "TF-IDF + SVM": {
         "acc": 0.8885448916408669,
@@ -239,199 +230,55 @@
         ],
         "f1_confident": 0.8823529411764706
       },
-      "DistilBERT only": {
-        "acc": 0.8699690402476781,
-        "prec": 0.7315436241610739,
-        "rec": 0.9819819819819819,
-        "f1": 0.8384615384615385,
-        "acc_reweighted": 0.9411211140453923,
-        "prec_reweighted": 0.5841304595927787,
-        "rec_reweighted": 0.9217536885355245,
+      "Keyword only": {
+        "acc": 0.7616099071207431,
+        "prec": 0.9722222222222222,
+        "rec": 0.3153153153153153,
+        "f1": 0.47619047619047616,
+        "acc_reweighted": 0.9380161466857801,
+        "prec_reweighted": 0.9722222222222222,
+        "rec_reweighted": 0.23345161548517915,
         "survey_rate_true": 0.08016344522515692,
-        "survey_rate_pred": 0.12649734337345855,
+        "survey_rate_pred": 0.019248979670404,
         "prec_rw_ci": [
-          0.44382637512205225,
-          0.7448114230738824
-        ],
-        "rec_rw_ci": [
-          0.783096353230592,
+          0.9117647058823529,
           1.0
         ],
+        "rec_rw_ci": [
+          0.17022024303057925,
+          0.33121087785119735
+        ],
         "rate_ci": [
           0.058137800237297144,
           0.10578811471750253
         ],
-        "f1_confident": 0.8792270531400966
+        "f1_confident": 0.5426356589147286
       },
-      "Hybrid (OR, paper)": {
-        "acc": 0.8699690402476781,
-        "prec": 0.7315436241610739,
-        "rec": 0.9819819819819819,
-        "f1": 0.8384615384615385,
-        "acc_reweighted": 0.9411211140453923,
-        "prec_reweighted": 0.5841304595927787,
-        "rec_reweighted": 0.9217536885355245,
+      "Original tool": {
+        "acc": 0.804953560371517,
+        "prec": 0.875,
+        "rec": 0.5045045045045045,
+        "f1": 0.64,
+        "acc_reweighted": 0.9350956487146761,
+        "prec_reweighted": 0.6386362753099374,
+        "rec_reweighted": 0.43842880392732314,
         "survey_rate_true": 0.08016344522515692,
-        "survey_rate_pred": 0.12649734337345855,
+        "survey_rate_pred": 0.05503283287768503,
         "prec_rw_ci": [
-          0.44382637512205225,
-          0.7448114230738824
+          0.4330754496646039,
+          0.9384655422160025
         ],
         "rec_rw_ci": [
-          0.783096353230592,
-          1.0
+          0.3097331244456427,
+          0.5902869842319514
         ],
         "rate_ci": [
           0.058137800237297144,
           0.10578811471750253
         ],
-        "f1_confident": 0.8792270531400966
+        "f1_confident": 0.6797385620915033
       },
-      "Validation-fitted hybrid (title+abstract)": {
-        "acc": 0.8730650154798761,
-        "prec": 0.7397260273972602,
-        "rec": 0.972972972972973,
-        "f1": 0.8404669260700389,
-        "acc_reweighted": 0.9572651263561842,
-        "prec_reweighted": 0.6892669420951308,
-        "rec_reweighted": 0.8501774232277687,
-        "survey_rate_true": 0.08016344522515692,
-        "survey_rate_pred": 0.09887773101582747,
-        "prec_rw_ci": [
-          0.5599481706494599,
-          0.8131227352838608
-        ],
-        "rec_rw_ci": [
-          0.6934620622993253,
-          1.0
-        ],
-        "rate_ci": [
-          0.058137800237297144,
-          0.10578811471750253
-        ],
-        "f1_confident": 0.883495145631068
-      },
-      "Validation-fitted hybrid (+ reference count)": {
-        "acc": 0.8730650154798761,
-        "prec": 0.7397260273972602,
-        "rec": 0.972972972972973,
-        "f1": 0.8404669260700389,
-        "acc_reweighted": 0.9520620202124981,
-        "prec_reweighted": 0.6720074432197634,
-        "rec_reweighted": 0.7852712040767321,
-        "survey_rate_true": 0.08016344522515692,
-        "survey_rate_pred": 0.09367462487214132,
-        "prec_rw_ci": [
-          0.54514967928988,
-          0.7956228191052878
-        ],
-        "rec_rw_ci": [
-          0.6153226729463922,
-          1.0
-        ],
-        "rate_ci": [
-          0.058137800237297144,
-          0.10578811471750253
-        ],
-        "f1_confident": 0.883495145631068
-      },
-      "Learned hybrid": {
-        "acc": 0.9362229102167182,
-        "prec": 0.8844129488927852,
-        "rec": 0.9369369369369369,
-        "f1": 0.9098876485230527,
-        "acc_reweighted": 0.9733759876464326,
-        "prec_reweighted": 0.8443325199757711,
-        "rec_reweighted": 0.8234972386008911,
-        "survey_rate_true": 0.08016344522515692,
-        "survey_rate_pred": 0.0784893186877115,
-        "f1_confident": 0.9368400167084378,
-        "prec_rw_ci": [
-          0.7474794241447963,
-          0.9348665001157425
-        ],
-        "rec_rw_ci": [
-          0.6567030415514286,
-          0.9777712030141028
-        ],
-        "rate_ci": [
-          0.058137800237297144,
-          0.10578811471750253
-        ]
-      },
-      "DistilBERT + magazine rule": {
-        "acc": 0.8606811145510835,
-        "prec": 0.7704918032786885,
-        "rec": 0.8468468468468469,
-        "f1": 0.8068669527896996,
-        "acc_reweighted": 0.9447201385498781,
-        "prec_reweighted": 0.6644894035147249,
-        "rec_reweighted": 0.626984338731624,
-        "survey_rate_true": 0.08016344522515692,
-        "survey_rate_pred": 0.0756388656148525,
-        "prec_rw_ci": [
-          0.5227309708034038,
-          0.8188993347814282
-        ],
-        "rec_rw_ci": [
-          0.46800966668827754,
-          0.8584115491195137
-        ],
-        "rate_ci": [
-          0.058137800237297144,
-          0.10578811471750253
-        ],
-        "f1_confident": 0.8842105263157894
-      },
-      "Validation-fitted hybrid + magazine rule": {
-        "acc": 0.8637770897832817,
-        "prec": 0.7723577235772358,
-        "rec": 0.8558558558558559,
-        "f1": 0.811965811965812,
-        "acc_reweighted": 0.9504579385732977,
-        "prec_reweighted": 0.7157333252970294,
-        "rec_reweighted": 0.6336543848883434,
-        "survey_rate_true": 0.08016344522515692,
-        "survey_rate_pred": 0.07097045335089981,
-        "prec_rw_ci": [
-          0.5928022714479848,
-          0.8347889193161425
-        ],
-        "rec_rw_ci": [
-          0.4737607020518179,
-          0.8605162342333799
-        ],
-        "rate_ci": [
-          0.058137800237297144,
-          0.10578811471750253
-        ],
-        "f1_confident": 0.8854166666666666
-      },
-      "Learned hybrid + magazine rule": {
-        "acc": 0.9077399380804954,
-        "prec": 0.9011842360706659,
-        "rec": 0.8216216216216216,
-        "f1": 0.859562405881832,
-        "acc_reweighted": 0.9632536978091988,
-        "prec_reweighted": 0.9011842360706659,
-        "rec_reweighted": 0.6083082094928096,
-        "survey_rate_true": 0.08016344522515692,
-        "survey_rate_pred": 0.054111020629024564,
-        "f1_confident": 0.9135174953959483,
-        "prec_rw_ci": [
-          0.8443133848924218,
-          0.9574490481522957
-        ],
-        "rec_rw_ci": [
-          0.4518895712292735,
-          0.8298627449194982
-        ],
-        "rate_ci": [
-          0.058137800237297144,
-          0.10578811471750253
-        ]
-      },
-      "Indexer type ('Review')": {
+      "Indexer type (Review)": {
         "acc": 0.8452012383900929,
         "prec": 0.7606837606837606,
         "rec": 0.8018018018018018,
@@ -455,53 +302,29 @@
         ],
         "f1_confident": 0.8648648648648649
       },
-      "Validation-fitted hybrid + magazine rule (type hidden)": {
-        "acc": 0.8544891640866873,
-        "prec": 0.7807017543859649,
-        "rec": 0.8018018018018018,
-        "f1": 0.7911111111111111,
-        "acc_reweighted": 0.9540569630777835,
-        "prec_reweighted": 0.7807017543859649,
-        "rec_reweighted": 0.593634107948027,
+      "Smyth & Cunningham rule": {
+        "acc": 0.8142414860681114,
+        "prec": 0.7802197802197802,
+        "rec": 0.6396396396396397,
+        "f1": 0.7029702970297029,
+        "acc_reweighted": 0.9366997303538764,
+        "prec_reweighted": 0.6427549745613876,
+        "rec_reweighted": 0.4735732771270777,
         "survey_rate_true": 0.08016344522515692,
-        "survey_rate_pred": 0.060955102289612664,
+        "survey_rate_pred": 0.059063355343115735,
         "prec_rw_ci": [
-          0.7053571428571429,
-          0.8504775373011968
+          0.4844063943396552,
+          0.8313286855286314
         ],
         "rec_rw_ci": [
-          0.44310944250927353,
-          0.801928908355795
+          0.345928798844175,
+          0.6460743974688198
         ],
         "rate_ci": [
           0.058137800237297144,
           0.10578811471750253
         ],
-        "f1_confident": 0.8723404255319149
-      },
-      "Baseline: distilbert_survey_model_synthetic (OR, th=0.8)": {
-        "acc": 0.7678018575851393,
-        "prec": 0.8214285714285714,
-        "rec": 0.4144144144144144,
-        "f1": 0.5508982035928144,
-        "acc_reweighted": 0.8974606852957578,
-        "prec_reweighted": 0.34367342059649747,
-        "rec_reweighted": 0.3068221232090926,
-        "survey_rate_true": 0.08016344522515692,
-        "survey_rate_pred": 0.07156770641456207,
-        "prec_rw_ci": [
-          0.23140113386555597,
-          0.5808594193931282
-        ],
-        "rec_rw_ci": [
-          0.22598678040331244,
-          0.42337136035273215
-        ],
-        "rate_ci": [
-          0.058137800237297144,
-          0.10578811471750253
-        ],
-        "f1_confident": 0.6174496644295302
+        "f1_confident": 0.7710843373493976
       },
       "LLM labels (Claude)": {
         "acc": 0.913312693498452,
@@ -535,86 +358,91 @@
     "kappa": 0.8102790014684288,
     "disagreements": 28
   },
+  "error_rates": {
+    "tpr": 0.7975347509404764,
+    "fpr": 0.00799055981352144,
+    "source": "data/eval_to_label.csv"
+  },
   "author_impact": [
     {
       "Author": "Zhu Han",
       "File": "han.csv",
       "Papers": 1353.0,
-      "Surveys": 87.0,
+      "Surveys": 91.0,
       "Non-papers": 17.0,
-      "In combiner training": 124.0,
+      "In hybrid training": 151.0,
       "Citations": 70229.0,
-      "Citations*": 54988.0,
-      "Papers excluded": 6.430155210643015,
-      "Citation reduction": 21.701861054550115,
+      "Citations*": 54784.0,
+      "Papers excluded": 6.72579453067258,
+      "Citation reduction": 21.992339346993408,
       "h-index": 128.0,
       "h-index*": 117.0,
       "h-index drop": 11.0,
       "h-index change": -8.59375,
-      "i10-index reduction": 7.4074074074074066
+      "i10-index reduction": 7.754629629629628
     },
     {
       "Author": "L. Hanzo",
       "File": "hanzo.csv",
       "Papers": 2710.0,
-      "Surveys": 165.0,
+      "Surveys": 168.0,
       "Non-papers": 10.0,
-      "In combiner training": 129.0,
+      "In hybrid training": 162.0,
       "Citations": 88856.0,
-      "Citations*": 62785.0,
-      "Papers excluded": 6.088560885608856,
-      "Citation reduction": 29.340731070496084,
+      "Citations*": 62656.0,
+      "Papers excluded": 6.199261992619927,
+      "Citation reduction": 29.48590978662105,
       "h-index": 131.0,
       "h-index*": 109.0,
       "h-index drop": 22.0,
       "h-index change": -16.793893129770993,
-      "i10-index reduction": 9.333333333333337
+      "i10-index reduction": 9.411764705882353
     },
     {
       "Author": "E. Hossain",
       "File": "hossain.csv",
       "Papers": 733.0,
-      "Surveys": 101.0,
+      "Surveys": 105.0,
       "Non-papers": 28.0,
-      "In combiner training": 71.0,
+      "In hybrid training": 82.0,
       "Citations": 40090.0,
-      "Citations*": 27042.0,
-      "Papers excluded": 13.77899045020464,
-      "Citation reduction": 32.54676976802195,
+      "Citations*": 26169.0,
+      "Papers excluded": 14.32469304229195,
+      "Citation reduction": 34.72437016712397,
       "h-index": 107.0,
-      "h-index*": 85.0,
-      "h-index drop": 22.0,
-      "h-index change": -20.560747663551403,
-      "i10-index reduction": 17.77251184834123
+      "h-index*": 83.0,
+      "h-index drop": 24.0,
+      "h-index change": -22.429906542056074,
+      "i10-index reduction": 18.483412322274884
     },
     {
       "Author": "D. Niyato",
       "File": "niyato.csv",
       "Papers": 2514.0,
-      "Surveys": 292.0,
+      "Surveys": 308.0,
       "Non-papers": 44.0,
-      "In combiner training": 382.0,
+      "In hybrid training": 519.0,
       "Citations": 101777.0,
-      "Citations*": 65531.0,
-      "Papers excluded": 11.614956245027845,
-      "Citation reduction": 35.61315424899535,
+      "Citations*": 64333.0,
+      "Papers excluded": 12.251392203659508,
+      "Citation reduction": 36.79023747998074,
       "h-index": 143.0,
       "h-index*": 116.0,
       "h-index drop": 27.0,
       "h-index change": -18.88111888111888,
-      "i10-index reduction": 15.170278637770895
+      "i10-index reduction": 16.176470588235293
     },
     {
       "Author": "F. Yu",
       "File": "yu.csv",
       "Papers": 985.0,
-      "Surveys": 79.0,
+      "Surveys": 80.0,
       "Non-papers": 33.0,
-      "In combiner training": 82.0,
+      "In hybrid training": 116.0,
       "Citations": 40612.0,
-      "Citations*": 27646.0,
-      "Papers excluded": 8.020304568527918,
-      "Citation reduction": 31.926524180045305,
+      "Citations*": 27780.0,
+      "Papers excluded": 8.121827411167512,
+      "Citation reduction": 31.596572441642863,
       "h-index": 101.0,
       "h-index*": 85.0,
       "h-index drop": 16.0,
@@ -625,49 +453,49 @@
       "Author": "Average",
       "File": "",
       "Papers": 1659.0,
-      "Surveys": 144.8,
+      "Surveys": 150.4,
       "Non-papers": 26.4,
-      "In combiner training": 157.6,
+      "In hybrid training": 206.0,
       "Citations": 68312.8,
-      "Citations*": 47598.4,
-      "Papers excluded": 9.186593472002453,
-      "Citation reduction": 30.225808064421763,
+      "Citations*": 47144.4,
+      "Papers excluded": 9.524593836082294,
+      "Citation reduction": 30.9178858444724,
       "h-index": 122.0,
-      "h-index*": 102.4,
-      "h-index drop": 19.6,
-      "h-index change": -16.134218766571426,
-      "i10-index reduction": 12.366612787426648
+      "h-index*": 102.0,
+      "h-index drop": 20.0,
+      "h-index change": -16.508050542272358,
+      "i10-index reduction": 12.795161991260507
     }
   ],
   "author_impact_by_method": {
-    "DistilBERT, no rules": {
+    "Learned hybrid (ours)": {
       "han.csv": {
-        "excluded": 15.151515151515152,
-        "citations": 28.855600962565322,
-        "h_drop": 16
+        "excluded": 6.72579453067258,
+        "citations": 21.992339346993408,
+        "h_drop": 11
       },
       "hanzo.csv": {
-        "excluded": 14.169741697416974,
-        "citations": 39.4706041235257,
-        "h_drop": 32
+        "excluded": 6.199261992619927,
+        "citations": 29.48590978662105,
+        "h_drop": 22
       },
       "hossain.csv": {
-        "excluded": 29.331514324693043,
-        "citations": 45.12347218757795,
-        "h_drop": 32
+        "excluded": 14.32469304229195,
+        "citations": 34.72437016712397,
+        "h_drop": 24
       },
       "niyato.csv": {
-        "excluded": 20.92283214001591,
-        "citations": 44.96202481896696,
-        "h_drop": 34
+        "excluded": 12.251392203659508,
+        "citations": 36.79023747998074,
+        "h_drop": 27
       },
       "yu.csv": {
-        "excluded": 14.111675126903553,
-        "citations": 34.91825076332118,
-        "h_drop": 17
+        "excluded": 8.121827411167512,
+        "citations": 31.596572441642863,
+        "h_drop": 16
       }
     },
-    "DistilBERT + rules": {
+    "Fine-tuned DistilBERT (ours)": {
       "han.csv": {
         "excluded": 10.495195861049519,
         "citations": 26.168676757464866,
@@ -694,115 +522,34 @@
         "h_drop": 17
       }
     },
-    "Learned hybrid, no rules": {
+    "Original tool": {
       "han.csv": {
-        "excluded": 9.238728750923872,
-        "citations": 23.43333950362386,
-        "h_drop": 12
+        "excluded": 4.508499630450849,
+        "citations": 12.685642683222031,
+        "h_drop": 7
       },
       "hanzo.csv": {
-        "excluded": 9.815498154981551,
-        "citations": 31.21229855046367,
-        "h_drop": 26
+        "excluded": 5.313653136531365,
+        "citations": 12.689069955883676,
+        "h_drop": 10
       },
       "hossain.csv": {
-        "excluded": 20.327421555252386,
-        "citations": 34.55724619605887,
-        "h_drop": 24
-      },
-      "niyato.csv": {
-        "excluded": 13.961813842482101,
-        "citations": 37.2137123318628,
-        "h_drop": 28
-      },
-      "yu.csv": {
-        "excluded": 9.644670050761421,
-        "citations": 32.14074657736629,
-        "h_drop": 16
-      }
-    },
-    "Learned hybrid + rules (main)": {
-      "han.csv": {
-        "excluded": 6.430155210643015,
-        "citations": 21.701861054550115,
-        "h_drop": 11
-      },
-      "hanzo.csv": {
-        "excluded": 6.088560885608856,
-        "citations": 29.340731070496084,
-        "h_drop": 22
-      },
-      "hossain.csv": {
-        "excluded": 13.77899045020464,
-        "citations": 32.54676976802195,
-        "h_drop": 22
-      },
-      "niyato.csv": {
-        "excluded": 11.614956245027845,
-        "citations": 35.61315424899535,
-        "h_drop": 27
-      },
-      "yu.csv": {
-        "excluded": 8.020304568527918,
-        "citations": 31.926524180045305,
-        "h_drop": 16
-      }
-    },
-    "same, type hidden": {
-      "han.csv": {
-        "excluded": 6.0606060606060606,
-        "citations": 21.69616540175711,
-        "h_drop": 11
-      },
-      "hanzo.csv": {
-        "excluded": 5.645756457564575,
-        "citations": 28.691365805347978,
+        "excluded": 16.234652114597544,
+        "citations": 27.949613369917685,
         "h_drop": 21
       },
-      "hossain.csv": {
-        "excluded": 12.687585266030013,
-        "citations": 31.309553504614616,
-        "h_drop": 22
-      },
       "niyato.csv": {
-        "excluded": 11.495624502784407,
-        "citations": 35.5561669139393,
-        "h_drop": 27
+        "excluded": 11.177406523468576,
+        "citations": 30.807549839354667,
+        "h_drop": 20
       },
       "yu.csv": {
-        "excluded": 7.918781725888325,
-        "citations": 31.92406185363932,
-        "h_drop": 16
+        "excluded": 6.598984771573605,
+        "citations": 28.363537870580124,
+        "h_drop": 13
       }
     },
-    "Validation-fitted hybrid + rules incl. magazine rule (earlier system)": {
-      "han.csv": {
-        "excluded": 8.425720620842572,
-        "citations": 21.869882811943786,
-        "h_drop": 11
-      },
-      "hanzo.csv": {
-        "excluded": 6.642066420664207,
-        "citations": 31.770505086882146,
-        "h_drop": 23
-      },
-      "hossain.csv": {
-        "excluded": 17.053206002728512,
-        "citations": 37.52556747318533,
-        "h_drop": 27
-      },
-      "niyato.csv": {
-        "excluded": 13.922036595067622,
-        "citations": 38.607936960216946,
-        "h_drop": 29
-      },
-      "yu.csv": {
-        "excluded": 8.730964467005077,
-        "citations": 30.1905840638235,
-        "h_drop": 15
-      }
-    },
-    "Indexer type ('Review')": {
+    "Indexer type (Review)": {
       "han.csv": {
         "excluded": 5.986696230598669,
         "citations": 19.67136083384357,
@@ -828,6 +575,125 @@
         "citations": 30.355559933024722,
         "h_drop": 16
       }
+    },
+    "Smyth & Cunningham rule": {
+      "han.csv": {
+        "excluded": 3.1042128603104215,
+        "citations": 14.683392900368794,
+        "h_drop": 8
+      },
+      "hanzo.csv": {
+        "excluded": 3.7638376383763834,
+        "citations": 26.591338795354282,
+        "h_drop": 19
+      },
+      "hossain.csv": {
+        "excluded": 6.957708049113233,
+        "citations": 18.53330007483163,
+        "h_drop": 16
+      },
+      "niyato.csv": {
+        "excluded": 8.194112967382656,
+        "citations": 28.780569283826406,
+        "h_drop": 20
+      },
+      "yu.csv": {
+        "excluded": 4.67005076142132,
+        "citations": 26.280409731113956,
+        "h_drop": 13
+      }
     }
-  }
+  },
+  "author_impact_corrected": [
+    {
+      "Author": "Zhu Han",
+      "flagged": 0.0672579453067258,
+      "flagged_citations": 0.2199233934699341,
+      "papers": 0.07506531763422783,
+      "papers_ci": [
+        0.061210013208213926,
+        0.09314448052055804
+      ],
+      "citations": 0.20846734714506807,
+      "citations_ci": [
+        0.19075612513256845,
+        0.22661858068104074
+      ]
+    },
+    {
+      "Author": "L. Hanzo",
+      "flagged": 0.06199261992619927,
+      "flagged_citations": 0.2948590978662105,
+      "papers": 0.06839650106930437,
+      "papers_ci": [
+        0.055655377764943795,
+        0.08483512990815628
+      ],
+      "citations": 0.26986268825773446,
+      "citations_ci": [
+        0.24792452922650848,
+        0.29012883226639063
+      ]
+    },
+    {
+      "Author": "E. Hossain",
+      "flagged": 0.1432469304229195,
+      "flagged_citations": 0.34724370167123975,
+      "papers": 0.17130943667173337,
+      "papers_ci": [
+        0.1412963479929395,
+        0.21257395854794553
+      ],
+      "citations": 0.3576178310993564,
+      "citations_ci": [
+        0.3326368047965913,
+        0.389398088364923
+      ]
+    },
+    {
+      "Author": "D. Niyato",
+      "flagged": 0.12251392203659509,
+      "flagged_citations": 0.36790237479980736,
+      "papers": 0.1450499712493722,
+      "papers_ci": [
+        0.11938095736264184,
+        0.18000803307809865
+      ],
+      "citations": 0.3685426316964686,
+      "citations_ci": [
+        0.34649831166441575,
+        0.3949484563598099
+      ]
+    },
+    {
+      "Author": "F. Yu",
+      "flagged": 0.08121827411167512,
+      "flagged_citations": 0.3159657244164286,
+      "papers": 0.0927468216739486,
+      "papers_ci": [
+        0.0760679787349006,
+        0.11503100508014309
+      ],
+      "citations": 0.3017431976519978,
+      "citations_ci": [
+        0.28158713736594937,
+        0.3220138550432091
+      ]
+    },
+    {
+      "Author": "Average",
+      "flagged": 0.09524593836082296,
+      "flagged_citations": 0.30917885844472404,
+      "papers": 0.11051360965971728,
+      "papers_ci": [
+        0.09086349894714524,
+        0.1372142513148132
+      ],
+      "citations": 0.30124673917012507,
+      "citations_ci": [
+        0.280849776203078,
+        0.3235562619700329
+      ]
+    }
+  ]
 }

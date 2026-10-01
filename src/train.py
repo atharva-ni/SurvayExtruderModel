@@ -1,6 +1,6 @@
 """
-DistilBERT Survey Classifier Training
-=====================================
+Training of the DistilBERT stage of the learned hybrid
+======================================================
   1. Stratified split: 20% test, then 10% of the remainder as validation.
      The test split is never used for training, early stopping or tuning.
   2. Fine-tune DistilBERT (survey = label 0 = positive class for all metrics).
@@ -8,8 +8,8 @@ DistilBERT Survey Classifier Training
      papers in author profiles have no abstract.
   3. Choose the DistilBERT decision threshold on the validation split
      (with and without abstracts), searching 0.01-0.99.
-  4. Fit the learned hybrid combiner on the same validation data.
 The split is saved with the model (data_split.csv) so evaluation reuses it.
+`python main.py train` then fits the learned hybrid on top (src/train_hybrid.py).
 """
 
 import os
@@ -34,13 +34,26 @@ from transformers import (
 
 from text_utils import MAX_LENGTH, paper_text
 from inference import predict_survey_proba, save_config, SURVEY_LABEL
-from hybrid import LearnedHybrid, best_f1_threshold
 
 warnings.simplefilter("ignore", category=FutureWarning)
 
 BASE_MODEL = "distilbert-base-uncased"
 SPLIT_FILE = "data_split.csv"
 TITLE_ONLY_RATE = 0.25  # share of training papers shown without their abstract
+
+
+def best_f1_threshold(y_true: np.ndarray, scores: np.ndarray) -> float:
+    """Threshold on P(survey) that maximizes survey-class F1."""
+    best_t, best_f1 = 0.5, -1.0
+    for t in np.linspace(0.01, 0.99, 99):
+        pred = scores >= t
+        tp = np.sum(pred & (y_true == 1))
+        fp = np.sum(pred & (y_true == 0))
+        fn = np.sum(~pred & (y_true == 1))
+        f1 = 2 * tp / max(1, 2 * tp + fp + fn)
+        if f1 > best_f1:
+            best_t, best_f1 = float(t), f1
+    return best_t
 
 
 def set_seed(seed: int = 42) -> None:
@@ -216,14 +229,11 @@ def run_training(dataset_path, output_dir="./distilbert_survey_model", epochs=3,
     tokenizer.save_pretrained(output_dir)
     model = trainer.model.eval()
 
-    # ---- Threshold and hybrid combiner, chosen on validation papers with and without abstracts ----
+    # ---- Threshold, chosen on validation papers with and without abstracts ----
     val_both = with_title_only_copies(val_df)
     val_proba = predict_survey_proba(val_both["Text"].tolist(), tokenizer, model)
     val_is_survey = (val_both["Label"].values == SURVEY_LABEL).astype(int)
     threshold = best_f1_threshold(val_is_survey, val_proba)
-
-    combiner = LearnedHybrid().fit(val_both, val_proba, val_is_survey, seed=seed)
-    combiner.save(output_dir)
 
     save_config(output_dir, {
         "threshold": threshold,
@@ -238,23 +248,21 @@ def run_training(dataset_path, output_dir="./distilbert_survey_model", epochs=3,
     test_proba = predict_survey_proba(test_df["Text"].tolist(), tokenizer, model)
     test_is_survey = (test_df["Label"].values == SURVEY_LABEL).astype(int)
     m = survey_metrics(test_is_survey, (test_proba >= threshold).astype(int))
-    h = survey_metrics(test_is_survey, combiner.predict(test_df, test_proba))
     title_only = with_title_only_copies(test_df).iloc[len(test_df):]
     t_proba = predict_survey_proba(title_only["Text"].tolist(), tokenizer, model)
     t = survey_metrics(test_is_survey, (t_proba >= threshold).astype(int))
 
-    print(f"\n💾 Model, threshold ({threshold:.2f}) and hybrid combiner saved to {output_dir}")
-    print(f"🔧 Hybrid coefficients: {combiner.coefficients()}")
+    print(f"\n💾 Model and threshold ({threshold:.2f}) saved to {output_dir}")
     print("\n📊 Held-out test split (survey = positive class):")
-    for name, r in (("DistilBERT", m), ("Learned hybrid", h), ("DistilBERT, title only", t)):
+    for name, r in (("DistilBERT", m), ("DistilBERT, title only", t)):
         print(f"   {name:22s} acc {r['accuracy']:.3f}  prec {r['precision']:.3f}  "
               f"rec {r['recall']:.3f}  F1 {r['f1']:.3f}")
-    print("✅ Training complete.")
+    print("✅ DistilBERT stage trained.")
 
 
-# -------------------- Re-select thresholds without retraining -------------------- #
-def retune_thresholds(model_dir="./distilbert_survey_model", seed=42):
-    """Re-run threshold selection and the combiner fit on the saved validation split (model weights unchanged)."""
+# -------------------- Re-select the threshold without retraining -------------------- #
+def retune_thresholds(model_dir="./distilbert_survey_model"):
+    """Re-run threshold selection on the saved validation split (model weights unchanged)."""
     from inference import load_model, load_config
     split = pd.read_csv(os.path.join(model_dir, SPLIT_FILE))
     val_df = split[split["Split"] == "val"].copy()
@@ -267,15 +275,10 @@ def retune_thresholds(model_dir="./distilbert_survey_model", seed=42):
     val_is_survey = (val_both["Label"].values == SURVEY_LABEL).astype(int)
 
     config = load_config(model_dir)
-    old_threshold, old_combiner = config["threshold"], LearnedHybrid.load(model_dir)
+    old_threshold = config["threshold"]
     config["threshold"] = best_f1_threshold(val_is_survey, val_proba)
-    combiner = LearnedHybrid().fit(val_both, val_proba, val_is_survey, seed=seed)
-
     print(f"DistilBERT threshold: {old_threshold:.2f} -> {config['threshold']:.2f}")
-    print(f"Hybrid threshold:     {old_combiner.threshold:.2f} -> {combiner.threshold:.2f}")
-    print(f"Hybrid coefficients:  {old_combiner.coefficients()} -> {combiner.coefficients()}")
     save_config(model_dir, config)
-    combiner.save(model_dir)
 
 
 # -------------------- Hyperparameter tuning -------------------- #
@@ -322,7 +325,7 @@ if __name__ == "__main__":
     parser.add_argument("--tune", action="store_true")
     parser.add_argument("--trials", type=int, default=5)
     parser.add_argument("--retune-thresholds", action="store_true",
-                        help="Re-select the thresholds of a trained model on its validation split")
+                        help="Re-select the DistilBERT threshold of a trained model on its validation split")
     args = parser.parse_args()
 
     if args.retune_thresholds:

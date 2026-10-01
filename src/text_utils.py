@@ -7,7 +7,7 @@ import re
 
 MAX_LENGTH = 384  # tokens; covers title + abstract for nearly all papers
 
-# Keyword filter from the paper (Section III-A-3), applied to the title
+# Title keyword filter (Section III-A-3 of the paper); also decides papers that have only a title
 PAPER_TITLE_KEYWORDS = re.compile(
     r"\b(?:survey|surveys|review|reviews|overview|taxonomy|comparative study)\b",
     re.IGNORECASE,
@@ -37,16 +37,7 @@ ABSTRACT_RESEARCH_CUES = re.compile(
     re.IGNORECASE,
 )
 
-# Explicit self-description as a survey (used by the magazine rule)
-EXPLICIT_SURVEY_CUES = re.compile(
-    r"\b(?:this (?:survey|review|tutorial|article reviews|paper reviews|paper surveys)|we (?:survey|review)|"
-    r"(?:comprehensive|systematic|extensive|holistic|thorough|contemporary) (?:overview|survey|review|tutorial)|"
-    r"(?:provide|present|give)s? (?:an|a brief|a comprehensive) (?:overview|survey|review|tutorial)|"
-    r"literature review)\b",
-    re.IGNORECASE,
-)
-
-# Magazines: short articles that often mix an overview with a case study
+# Magazines: short articles that often mix an overview with a case study (a learned-hybrid feature)
 MAGAZINE_VENUE = re.compile(
     r"magazine|^ieee wireless communications$|^ieee network$|^getmobile|^ieee intelligent systems$|"
     r"^communications of the acm$|^ieee internet computing$|^ieee pervasive computing$|^ieee multimedia$|"
@@ -88,3 +79,8 @@ def paper_text(title, abstract) -> str:
     """Model input: cleaned title and abstract (the tokenizer lowercases)."""
     title, abstract = clean_text(title), clean_text(abstract)
     return f"{title}. {abstract}" if abstract else title
+
+
+def keyword_is_survey(title) -> bool:
+    """Title keyword filter from the paper."""
+    return bool(PAPER_TITLE_KEYWORDS.search(clean_text(title)))

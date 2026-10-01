@@ -1,5 +1,5 @@
 {
-  "_note": "Google Scholar metrics and top-20 items retrieved 2026-09-24. Truth labels by Claude from titles/venues: S = survey/tutorial/overview, M = magazine overview-with-case-study (grey zone), R = research, B = book. Unverified by a human.",
+  "_note": "Google Scholar metrics and top-20 items retrieved 2026-09-24. Truth labels by Claude from titles/venues: S = survey/tutorial/overview, M = magazine overview-with-case-study (grey zone), R = research, B = book. Verified by the first author on 2026-09-29 for the 43 items used in the paper (not in training or fitting data); the first author agreed with all 43 labels.",
   "niyato": {"scholar": "https://scholar.google.com/citations?user=T8sVhLMAAAAJ", "citations": 142895, "h": 169, "i10": 1460,
     "top20": [["Federated learning in mobile edge networks: A comprehensive survey", "S"],
               ["A survey of mobile cloud computing: architecture, applications, and approaches", "S"],

@@ -1,7 +1,7 @@
 import math
 
 from text_utils import (
-    clean_text, paper_text, PAPER_TITLE_KEYWORDS, EXPLICIT_SURVEY_CUES, MAGAZINE_VENUE, NON_PAPER_TYPES,
+    clean_text, paper_text, PAPER_TITLE_KEYWORDS, MAGAZINE_VENUE, NON_PAPER_TYPES,
 )
 
 
@@ -30,12 +30,6 @@ def test_paper_title_keywords():
     assert PAPER_TITLE_KEYWORDS.search("Network Slicing: A Comparative Study")
     assert not PAPER_TITLE_KEYWORDS.search("Reviewer Assignment with Matching Theory")
     assert not PAPER_TITLE_KEYWORDS.search("Optimal Power Allocation for NOMA")
-
-
-def test_explicit_survey_cues():
-    assert EXPLICIT_SURVEY_CUES.search("In this survey, we cover recent work.")
-    assert EXPLICIT_SURVEY_CUES.search("This article provides a comprehensive overview of RIS.")
-    assert not EXPLICIT_SURVEY_CUES.search("We propose a new scheme and show simulation results.")
 
 
 def test_magazine_venue():

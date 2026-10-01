@@ -32,23 +32,6 @@ def test_non_paper_by_type_or_title_wins():
     assert list(categorize(f, np.array([1, 1]))) == ["non-paper", "non-paper"]
 
 
-def test_magazine_rule():
-    f = frame([
-        # flagged, magazine, no explicit survey framing -> magazine-overview
-        ["Digital Twins for 6G Networks", ABSTRACT, "IEEE Network", "JournalArticle"],
-        # survey term in title -> survey
-        ["A Survey of Digital Twins", ABSTRACT, "IEEE Network", "JournalArticle"],
-        # survey phrasing in abstract -> survey
-        ["Digital Twins for 6G Networks", SURVEY_ABSTRACT, "IEEE Communications Magazine", "JournalArticle"],
-        # typed Review by the indexer -> survey
-        ["Random Access for M2M: Issues and Approaches", ABSTRACT, "IEEE Communications Magazine", "JournalArticle; Review"],
-        # not flagged -> research regardless of venue
-        ["Digital Twins for 6G Networks", ABSTRACT, "IEEE Network", "JournalArticle"],
-    ])
-    assert list(categorize(f, np.array([1, 1, 1, 1, 0]))) == [
-        "magazine-overview", "survey", "survey", "survey", "research"]
-
-
 def test_title_only_rule():
     f = frame([
         # only a title, no survey keyword: not a survey even if the classifier says so (typically a book)

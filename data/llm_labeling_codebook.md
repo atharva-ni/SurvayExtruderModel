@@ -23,11 +23,11 @@ type or title. The pool was scored with the fine-tuned DistilBERT model and spli
 
 | Stratum | Definition | Pool | Labeled |
 |---|---|---|---|
-| flagged | DistilBERT survey probability >= 0.5 | 1,119 | 727 |
-| magazine_arxiv_low | probability < 0.5, magazine or arXiv venue | 636 | 108 |
-| random_low | all other papers | 7,751 | 165 |
+| flagged | DistilBERT survey probability >= 0.5 | 1,119 | 1,119 |
+| magazine_arxiv_low | probability < 0.5, magazine or arXiv venue | 636 | 150 |
+| random_low | all other papers | 7,751 | 250 |
 
-1,519 papers were drawn (all 1,119 flagged papers, 150 and 250 from the other strata) and shuffled; the first 1,000 were
-labeled, blind to the model score, by Claude Opus 5.5 (`claude-opus-5-5`) on 28 September 2026 following the
-rules above. `StratumWeight` = pool size / labeled papers in the stratum. Labels: 0 survey, 1 research,
-skip = not a paper (382 / 566 / 52).
+1,519 papers were drawn (all 1,119 flagged papers, 150 and 250 from the other strata) and shuffled; all were
+labeled, blind to the model score, by Claude Opus 5.5 (`claude-opus-5-5`) on 28-29 September 2026 following the
+rules above (the first 1,000 on 28 September, the remaining 519 on 29 September). `StratumWeight` = pool size / labeled papers in the stratum. Labels: 0 survey, 1 research,
+skip = not a paper (596 / 845 / 78).

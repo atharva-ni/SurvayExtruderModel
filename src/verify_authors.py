@@ -19,11 +19,10 @@ import argparse
 import pandas as pd
 from tabulate import tabulate
 
-from classifier import prepare_frame, classify_frame, categorize, calculate_indices, DEFAULT_MAGAZINE_RULE
+from classifier import prepare_frame, classify_frame, categorize, calculate_indices
 
 # Books only have to be kept out of the survey category (they stay in the profile either way)
-EXPECTED = {"S": {"survey"}, "M": {"magazine-overview", "survey"}, "R": {"research", "magazine-overview"},
-            "B": {"non-paper", "research"}}
+EXPECTED = {"S": {"survey"}, "M": {"survey"}, "R": {"research"}, "B": {"non-paper", "research"}}
 PREFERRED_SOURCE = "Semantic Scholar (merged IDs)"
 
 
@@ -42,7 +41,7 @@ def find(profile: pd.DataFrame, title: str):
 
 def verify(reference_path: str, profiles: dict, model_path: str, report_path: str,
            training_csv: str = "data/real_dataset.csv",
-           combiner_csvs=("data/llm_labels.csv", "data/eval_to_label.csv")) -> None:
+           hybrid_csvs=("data/llm_labels.csv", "data/eval_to_label.csv")) -> None:
     with open(reference_path, encoding="utf-8") as f:
         reference = json.load(f)
 
@@ -50,12 +49,12 @@ def verify(reference_path: str, profiles: dict, model_path: str, report_path: st
     train_keys = set()
     if os.path.exists(training_csv):
         train_keys = set(pd.read_csv(training_csv, usecols=["Title"])["Title"].map(norm_title))
-    # Profile papers the learned hybrid was fitted on count as seen in training as well
-    for path in combiner_csvs:
-        if os.path.exists(path):
-            train_keys |= set(pd.read_csv(path, usecols=["Title"])["Title"].map(norm_title))
     else:
         print(f"⚠️  Training set '{training_csv}' not found; overlap with training data NOT marked")
+    # Profile papers the learned hybrid was fitted on count as seen in training as well
+    for path in hybrid_csvs:
+        if os.path.exists(path):
+            train_keys |= set(pd.read_csv(path, usecols=["Title"])["Title"].map(norm_title))
 
     coverage_rows, check_rows, details = [], [], []
     all_correct = all_total = unseen_correct = unseen_total = 0
@@ -86,7 +85,7 @@ def verify(reference_path: str, profiles: dict, model_path: str, report_path: st
         df["_key"] = df["title"].map(norm_title)
         frame = prepare_frame(df)
         is_survey, _ = classify_frame(frame, model_path=model_path)
-        df["Category"] = categorize(frame, is_survey, magazine_rule=DEFAULT_MAGAZINE_RULE)
+        df["Category"] = categorize(frame, is_survey)
 
         correct = total = u_correct = u_total = 0
         for title, truth in ref["top20"]:
@@ -117,11 +116,11 @@ def verify(reference_path: str, profiles: dict, model_path: str, report_path: st
     detail = tabulate(details, headers=["Author", "Ref", "Classifier", "", "In training", "Title"], tablefmt="github")
 
     md = ["# Author verification against Google Scholar", "",
-          "Reference labels: S survey/tutorial/overview, M magazine overview (survey or magazine-overview accepted), "
-          "R research (research or magazine-overview accepted), B book (must not be counted as a survey).", "",
+          "Reference labels: S survey/tutorial/overview, M magazine overview (counts as a survey), "
+          "R research, B book (must not be counted as a survey).", "",
           "## Profile completeness", "", coverage, "", "## Classification of Scholar top-20 items", "",
           f"Items whose title is in the training set (`{training_csv}`) or among the profile papers the learned "
-          f"hybrid was fitted on ({', '.join(f'`{c}`' for c in combiner_csvs)}) are counted only in the first column.", "",
+          f"hybrid was fitted on ({', '.join(f'`{c}`' for c in hybrid_csvs)}) are counted only in the first column.", "",
           checks, "", "## Details", "", detail, ""]
     os.makedirs(os.path.dirname(os.path.abspath(report_path)), exist_ok=True)
     with open(report_path, "w", encoding="utf-8") as f:
